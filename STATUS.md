@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-16. Read this first in a new session, then `CLAUDE.md` and `DESIGN.md`.
+Last updated: 2026-10-17. Read this first in a new session, then `CLAUDE.md` and `DESIGN.md`.
 
 ## Where things stand
 
@@ -23,7 +23,8 @@ Checks passing at the last commit: `pnpm lint`, `pnpm typecheck`, 104 API tests,
 
 These need the user (accounts, keys, a camera), in this order:
 
-1. **Gemini key.** Add `LLM_API_KEY` to `.env`, then run `pnpm --filter api eval`. It overwrites `docs/eval.md`; commit the result. Confirm the default model `gemini-2.5-flash` still works, or set `LLM_MODEL`. Check the result against the 90% target, and fix prompts in `apps/api/src/agent/prompts/` if it misses.
+1. **Gemini key.** Key is in `.env`. 2026-10-17: free tier is 20 requests/day per model; `gemini-2.5-flash` and `-flash-lite` were exhausted, `gemini-2.0-flash` is retired (404). `LLM_MODEL=gemini-3.8-flash` scored 36/36 on fixtures 01–03 before its quota ran out too. Rerun the full eval once quota resets or billing is on. A public demo on a 20/day free tier will run dry; enable billing before sharing the link.
+   Original step: Add `LLM_API_KEY` to `.env`, then run `pnpm --filter api eval`. It overwrites `docs/eval.md`; commit the result. Confirm the default model `gemini-2.5-flash` still works, or set `LLM_MODEL`. Check the result against the 90% target, and fix prompts in `apps/api/src/agent/prompts/` if it misses.
 2. **Postgres.** Create a Neon database and copy the **direct** (non-pooled) connection string. Give it only to Koyeb. Keep `.env` pointing at the local container, because Jest and Playwright read `DATABASE_URL` from `.env` and reset whatever database it names.
 3. **Deploy.** Follow README "Deploy": the API on Koyeb's free instance (Dockerfile `apps/api/Dockerfile`, port 8080, `STORAGE_DRIVER=db`), then the web app on Vercel (Root Directory `apps/web`, `VITE_API_URL` = the Koyeb URL), then set Koyeb's `APP_BASE_URL` to the Vercel URL. Neither has been run against a real account yet, so expect small fixes on the first run. Then `curl -X POST <api>/demo/reset`, open the Vercel URL, and try samples 01 and 02.
 4. **Video.** Record from `docs/demo-script.md` against the deployed app.
