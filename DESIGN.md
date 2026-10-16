@@ -75,10 +75,12 @@ Four deterministic stages. The LLM is used only in stage 1 and, optionally, to e
 
 ### Stage 1: Extract
 - Input: PDF file.
-- Get text via `pdf-parse`. If text is empty or too short, send page images to a vision-capable model.
-- LLM returns JSON matching the extraction schema (Zod): vendor name, tax ID, invoice number, dates, currency, line items, subtotal, tax, total, and a per-field confidence.
-- Validate with Zod. On failure, retry up to 2 times with the validation error in the prompt. Then mark `FAILED`.
-- Sanity check: line totals must sum to subtotal, subtotal plus tax must equal total (within 1 minor unit). Violations lower confidence and add a discrepancy.
+- Get text via `pdf-parse`. If it has fewer than 80 non-whitespace characters, the PDF is treated as scanned and the PDF itself is sent to a multimodal model (Gemini and Claude both read PDFs natively, so no page rasterising is needed).
+- LLM returns JSON matching the extraction schema (Zod): vendor name, tax ID, invoice number, PO number, dates, currency, line items, subtotal, tax, total, and confidence per field group (vendor, invoice number, dates, currency, line items, totals). If the document is not an invoice it returns `isInvoice: false` with a reason, and the invoice is marked `FAILED`.
+- Validate with Zod. On failure, retry up to 2 times with the validation error in the prompt. Then mark `FAILED` with every raw output stored in `rawExtraction`.
+- Overall confidence is the lowest field-group confidence, multiplied by 0.9 for scanned (vision) documents.
+- Sanity check: line totals must sum to subtotal, subtotal plus tax must equal total (within 1 minor unit). Each violation adds an `AMOUNT_MISMATCH` WARNING discrepancy and caps confidence at 0.6.
+- Transport errors (rate limits, outages) are not extraction failures: the job is retried with backoff, up to 3 attempts in total, then the invoice is marked `FAILED`. Non-retryable errors (missing key, bad request) fail immediately.
 
 ### Stage 2: Match
 - Vendor: exact tax ID match, else fuzzy name match (normalized, token-based). No match yields `UNKNOWN_VENDOR`.

@@ -9,6 +9,7 @@ const envSchema = z.object({
   MAX_UPLOAD_MB: z.coerce.number().int().positive().default(10),
   PORT: z.coerce.number().int().positive().default(3000),
   UPLOAD_DIR: z.string().default('uploads'),
+  WORKER_ENABLED: z.stringbool().default(true),
 });
 
 export type Env = z.infer<typeof envSchema>;

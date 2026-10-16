@@ -2,12 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { NotFoundError, ValidationError } from '../common/domain-errors';
+import { PROCESS_INVOICE_JOB } from '../common/job-types';
 import { PrismaService } from '../common/prisma.service';
 import { FILE_STORAGE, type FileStorage } from '../storage/file-storage';
 import type { ListInvoicesQuery } from './invoice-query.schema';
 import { isPdf } from './pdf-signature';
-
-export const PROCESS_INVOICE_JOB = 'PROCESS_INVOICE';
 
 export type UploadedInvoiceFile = { buffer: Buffer; originalname: string };
 
