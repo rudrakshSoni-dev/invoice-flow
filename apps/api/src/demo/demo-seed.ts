@@ -83,6 +83,9 @@ export type SeedOptions = {
 
 export type SeedCounts = { vendors: number; purchaseOrders: number; invoices: number };
 
+/** Storage keys of seeded history files; everything else is a visitor upload. */
+export const HISTORY_FILE_PREFIX = 'history-';
+
 const DOMAIN_TABLES =
   '"Job", "AgentRun", "LedgerEntry", "AuditEvent", "Discrepancy", "InvoiceLine", "Invoice", "PurchaseOrderLine", "PurchaseOrder", "Vendor"';
 
@@ -132,7 +135,7 @@ export async function seedDatabase(
     const { storage, now = new Date() } = options.history;
     for (const entry of history.invoices) {
       const pdf = await readFile(join(options.fixturesDir, 'history', entry.file));
-      const fileKey = `history-${entry.file}`;
+      const fileKey = `${HISTORY_FILE_PREFIX}${entry.file}`;
       await storage.save(fileKey, pdf);
       await prisma.$transaction((tx) => createHistoryInvoice(tx, entry, fileKey, now));
     }

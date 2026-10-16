@@ -221,6 +221,8 @@ The seed script creates:
 - Secrets via environment variables, never committed.
 - Public demo URL with the seeded workspace; a "Reset demo data" button in the footer.
 - Uploaded files limited to 10 MB PDFs, scanned for type, and deleted after 24 hours in the public demo.
+  - Files live in Cloud Storage (`STORAGE_DRIVER=gcs`) on Cloud Run, local disk otherwise.
+  - Expiry runs in the API (`UPLOAD_RETENTION_HOURS=24`, swept at boot and hourly) rather than as a bucket lifecycle rule, so the invoice row, its ledger entry and its PO billing are removed together with the file. Seeded history is never expired.
 
 ## 14. Next steps (list in README, do not build now)
 
