@@ -8,3 +8,14 @@ export const listInvoicesQuerySchema = z.object({
 });
 
 export type ListInvoicesQuery = z.infer<typeof listInvoicesQuerySchema>;
+
+export const approveInvoiceSchema = z.object({
+  note: z.string().trim().max(500).optional(),
+});
+
+export const rejectInvoiceSchema = z.object({
+  reason: z.string().trim().min(3, 'A rejection reason is required').max(500),
+});
+
+export type ApproveInvoiceInput = z.infer<typeof approveInvoiceSchema>;
+export type RejectInvoiceInput = z.infer<typeof rejectInvoiceSchema>;

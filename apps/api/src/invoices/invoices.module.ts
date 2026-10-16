@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
+import { AgentModule } from '../agent/agent.module';
 import type { Env } from '../common/env';
 import { ENV } from '../common/env.module';
 import { InvoicesController } from './invoices.controller';
@@ -7,6 +8,7 @@ import { InvoicesService } from './invoices.service';
 
 @Module({
   imports: [
+    AgentModule,
     MulterModule.registerAsync({
       inject: [ENV],
       // No `dest`: multer keeps the file in memory so the PDF signature can be checked before storing.
