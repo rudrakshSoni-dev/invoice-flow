@@ -1,0 +1,88 @@
+[
+  {
+    "poNumber": "PO-1001",
+    "vendor": "acme",
+    "currency": "USD",
+    "scenario": "Invoice 1: clean invoice, exact match, auto-approved",
+    "lines": [
+      { "description": "A4 copy paper, 5-ream case", "quantity": 20, "unitPriceMinor": 4250 },
+      { "description": "Black toner cartridge", "quantity": 6, "unitPriceMinor": 8900 }
+    ]
+  },
+  {
+    "poNumber": "PO-1002",
+    "vendor": "northwind",
+    "currency": "USD",
+    "scenario": "Invoice 2: billed 5% over PO total (blocking)",
+    "lines": [
+      {
+        "description": "Freight, Chicago to Denver, full truckload",
+        "quantity": 4,
+        "unitPriceMinor": 285000
+      }
+    ]
+  },
+  {
+    "poNumber": "PO-1003",
+    "vendor": "brightline",
+    "currency": "USD",
+    "scenario": "Invoice 3: duplicate invoice number from same vendor",
+    "lines": [
+      { "description": "Monthly office cleaning, October", "quantity": 1, "unitPriceMinor": 320000 }
+    ]
+  },
+  {
+    "poNumber": "PO-1004",
+    "vendor": "lumen",
+    "currency": "EUR",
+    "scenario": "Invoice 5: invoice billed in USD against EUR PO",
+    "lines": [
+      {
+        "description": "Analytics platform, annual license, 25 seats",
+        "quantity": 25,
+        "unitPriceMinor": 48000
+      }
+    ]
+  },
+  {
+    "poNumber": "PO-1005",
+    "vendor": "harbor",
+    "currency": "USD",
+    "scenario": "Invoice 6: scanned PDF, vision fallback, lower confidence",
+    "lines": [
+      { "description": "Trade show banners, 3x8 ft", "quantity": 4, "unitPriceMinor": 18500 },
+      { "description": "Brochures, tri-fold, 1000 count", "quantity": 2, "unitPriceMinor": 34000 }
+    ]
+  },
+  {
+    "poNumber": "PO-1006",
+    "vendor": "acme",
+    "currency": "USD",
+    "scenario": "Invoice 7: invoice quantity (12) exceeds PO line quantity (10)",
+    "lines": [{ "description": "Ergonomic task chair", "quantity": 10, "unitPriceMinor": 27900 }]
+  },
+  {
+    "poNumber": "PO-1007",
+    "vendor": "northwind",
+    "currency": "USD",
+    "scenario": "Invoice 8: line totals do not add up to the invoice subtotal",
+    "lines": [
+      {
+        "description": "Pallet storage, per pallet per month",
+        "quantity": 40,
+        "unitPriceMinor": 1800
+      },
+      { "description": "Outbound handling fee", "quantity": 1, "unitPriceMinor": 45000 }
+    ]
+  },
+  {
+    "poNumber": "PO-1008",
+    "vendor": "cedar",
+    "currency": "USD",
+    "scenario": "Invoice 9: no PO number on invoice, matched by vendor and amount",
+    "lines": [
+      { "description": "Laptop provisioning and imaging", "quantity": 15, "unitPriceMinor": 12000 },
+      { "description": "On-site support, hourly", "quantity": 18, "unitPriceMinor": 9500 }
+    ]
+  }
+]

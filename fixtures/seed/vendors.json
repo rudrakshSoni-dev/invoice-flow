@@ -1,0 +1,38 @@
+[
+  {
+    "key": "acme",
+    "name": "Acme Office Supplies Inc.",
+    "taxId": "US-84-1029384",
+    "email": "billing@acme-office.example"
+  },
+  {
+    "key": "northwind",
+    "name": "Northwind Logistics LLC",
+    "taxId": "US-27-5561902",
+    "email": "ar@northwind-logistics.example"
+  },
+  {
+    "key": "brightline",
+    "name": "Brightline Facility Services",
+    "taxId": "US-91-3348271",
+    "email": "invoices@brightline.example"
+  },
+  {
+    "key": "lumen",
+    "name": "Lumen Software GmbH",
+    "taxId": "DE-298374615",
+    "email": "rechnung@lumen-software.example"
+  },
+  {
+    "key": "harbor",
+    "name": "Harbor Print Co.",
+    "taxId": "US-46-7720135",
+    "email": "accounts@harborprint.example"
+  },
+  {
+    "key": "cedar",
+    "name": "Cedar IT Services",
+    "taxId": "US-63-9081726",
+    "email": "billing@cedar-it.example"
+  }
+]

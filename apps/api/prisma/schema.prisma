@@ -1,0 +1,230 @@
+// Source of truth for the data model: DESIGN.md section 6.
+// Money is always integer minor units plus an ISO 4217 currency code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PurchaseOrderStatus {
+  OPEN
+  PARTIALLY_BILLED
+  CLOSED
+}
+
+enum InvoiceStatus {
+  PROCESSING
+  AUTO_APPROVED
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  FAILED
+}
+
+enum DiscrepancyType {
+  AMOUNT_MISMATCH
+  QUANTITY_MISMATCH
+  CURRENCY_MISMATCH
+  DUPLICATE_INVOICE
+  UNKNOWN_VENDOR
+  NO_MATCHING_PO
+  LOW_CONFIDENCE
+}
+
+enum DiscrepancySeverity {
+  INFO
+  WARNING
+  BLOCKING
+}
+
+enum AuditStep {
+  UPLOADED
+  EXTRACTED
+  MATCHED
+  DECIDED
+  REVIEWED
+  POSTED
+}
+
+enum Actor {
+  AGENT
+  USER
+}
+
+enum AgentRunStatus {
+  SUCCEEDED
+  INVALID_OUTPUT
+  ERROR
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+model Vendor {
+  id        String   @id @default(uuid())
+  name      String
+  taxId     String?  @unique
+  email     String?
+  createdAt DateTime @default(now())
+
+  purchaseOrders PurchaseOrder[]
+  invoices       Invoice[]
+  ledgerEntries  LedgerEntry[]
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  poNumber    String              @unique
+  vendorId    String
+  currency    String              @db.Char(3)
+  totalMinor  Int
+  billedMinor Int                 @default(0)
+  status      PurchaseOrderStatus @default(OPEN)
+  createdAt   DateTime            @default(now())
+
+  vendor   Vendor              @relation(fields: [vendorId], references: [id])
+  lines    PurchaseOrderLine[]
+  invoices Invoice[]
+
+  @@index([vendorId, status])
+}
+
+model PurchaseOrderLine {
+  id              String @id @default(uuid())
+  purchaseOrderId String
+  description     String
+  quantity        Int
+  unitPriceMinor  Int
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  vendorId        String?
+  purchaseOrderId String?
+  invoiceNumber   String?
+  issueDate       DateTime?     @db.Date
+  dueDate         DateTime?     @db.Date
+  currency        String?       @db.Char(3)
+  subtotalMinor   Int?
+  taxMinor        Int?
+  totalMinor      Int?
+  status          InvoiceStatus @default(PROCESSING)
+  confidence      Float?
+  fileKey         String
+  rawExtraction   Json?
+  createdAt       DateTime      @default(now())
+
+  vendor        Vendor?        @relation(fields: [vendorId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  lines         InvoiceLine[]
+  discrepancies Discrepancy[]
+  auditEvents   AuditEvent[]
+  ledgerEntries LedgerEntry[]
+  agentRuns     AgentRun[]
+  jobs          Job[]
+
+  @@index([status, createdAt])
+  // Not unique: duplicates are stored and flagged as DUPLICATE_INVOICE.
+  @@index([vendorId, invoiceNumber])
+}
+
+model InvoiceLine {
+  id             String @id @default(uuid())
+  invoiceId      String
+  description    String
+  quantity       Int
+  unitPriceMinor Int
+  totalMinor     Int
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Discrepancy {
+  id        String              @id @default(uuid())
+  invoiceId String
+  type      DiscrepancyType
+  severity  DiscrepancySeverity
+  message   String
+  expected  String?
+  actual    String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model AuditEvent {
+  id        String    @id @default(uuid())
+  invoiceId String
+  step      AuditStep
+  actor     Actor
+  summary   String
+  detail    Json?
+  createdAt DateTime  @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, createdAt])
+}
+
+model LedgerEntry {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  vendorId    String
+  accountCode String
+  amountMinor Int
+  currency    String   @db.Char(3)
+  postedAt    DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  vendor  Vendor  @relation(fields: [vendorId], references: [id])
+
+  @@index([postedAt])
+}
+
+model AgentRun {
+  id            String         @id @default(uuid())
+  invoiceId     String
+  promptVersion String
+  promptHash    String
+  model         String
+  latencyMs     Int
+  tokensIn      Int?
+  tokensOut     Int?
+  status        AgentRunStatus
+  createdAt     DateTime       @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+// Postgres-backed job queue (no Redis for the demo).
+model Job {
+  id        String    @id @default(uuid())
+  type      String
+  invoiceId String
+  status    JobStatus @default(QUEUED)
+  attempts  Int       @default(0)
+  runAt     DateTime  @default(now())
+  lastError String?
+  createdAt DateTime  @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAt])
+}
