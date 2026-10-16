@@ -6,7 +6,8 @@ export type PipelineStage = 'EXTRACT' | 'MATCH' | 'CHECK' | 'POST';
 
 export type InvoiceEvent =
   | { type: 'invoice.status'; invoiceId: string; status: InvoiceStatus }
-  | { type: 'invoice.stage'; invoiceId: string; stage: PipelineStage };
+  | { type: 'invoice.stage'; invoiceId: string; stage: PipelineStage }
+  | { type: 'demo.reset' };
 
 /**
  * In-process event bus behind GET /events. The demo runs as a single instance; with several

@@ -1,5 +1,6 @@
 /**
- * Renders fixtures/invoices/*.pdf from manifest.json. Run once and commit the PDFs:
+ * Renders fixtures/invoices/*.pdf and fixtures/history/*.pdf from their manifest.json files.
+ * Run once and commit the PDFs:
  *   pnpm --filter api fixtures:generate
  * The scanned fixture needs `pdftoppm` (poppler-utils) to rasterise the page.
  */
@@ -9,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PDFDocument, PDFFont, StandardFonts, degrees, rgb } from 'pdf-lib';
 import type { ExtractedInvoiceFields } from '../src/agent/extraction.schema';
+import { historySchema } from '../src/demo/demo-seed';
 import { FIXTURE_DIR, loadFixtureManifest } from './fixture-manifest';
 
 const FIXED_DATE = new Date('2026-10-01T00:00:00Z');
@@ -181,6 +183,15 @@ async function main(): Promise<void> {
     }
     writeFileSync(join(FIXTURE_DIR, fixture.file), pdf);
     console.log(`wrote ${fixture.file}`);
+  }
+
+  const historyDir = join(FIXTURE_DIR, '../history');
+  const history = historySchema.parse(
+    JSON.parse(readFileSync(join(historyDir, 'manifest.json'), 'utf8')),
+  );
+  for (const entry of history.invoices) {
+    writeFileSync(join(historyDir, entry.file), await renderInvoice(entry.invoice));
+    console.log(`wrote history/${entry.file}`);
   }
 }
 

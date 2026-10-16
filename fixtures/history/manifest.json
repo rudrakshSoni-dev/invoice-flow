@@ -1,0 +1,264 @@
+{
+  "purchaseOrders": [
+    {
+      "poNumber": "PO-0961",
+      "vendor": "acme",
+      "currency": "USD",
+      "scenario": "History: August office supplies, billed in full",
+      "lines": [
+        { "description": "A4 copy paper, 5-ream case", "quantity": 30, "unitPriceMinor": 4250 },
+        { "description": "Whiteboard markers, 12-pack", "quantity": 10, "unitPriceMinor": 1450 }
+      ]
+    },
+    {
+      "poNumber": "PO-0962",
+      "vendor": "northwind",
+      "currency": "USD",
+      "scenario": "History: September freight, billed in full",
+      "lines": [
+        {
+          "description": "Freight, Chicago to Minneapolis, full truckload",
+          "quantity": 3,
+          "unitPriceMinor": 198000
+        }
+      ]
+    },
+    {
+      "poNumber": "PO-0963",
+      "vendor": "lumen",
+      "currency": "EUR",
+      "scenario": "History: September support retainer in EUR, billed in full",
+      "lines": [
+        {
+          "description": "Data pipeline support, September",
+          "quantity": 1,
+          "unitPriceMinor": 420000
+        }
+      ]
+    },
+    {
+      "poNumber": "PO-0964",
+      "vendor": "harbor",
+      "currency": "USD",
+      "scenario": "History: flyer print run, over-billed and approved by a reviewer",
+      "lines": [
+        { "description": "Event flyers, A5, 2000 count", "quantity": 2, "unitPriceMinor": 26000 }
+      ]
+    }
+  ],
+  "invoices": [
+    {
+      "file": "acme-inv-a-1987.pdf",
+      "story": "Clean match, auto-approved",
+      "daysAgo": 24,
+      "processingSeconds": 9,
+      "confidence": 0.97,
+      "outcome": "AUTO_APPROVED",
+      "invoice": {
+        "isInvoice": true,
+        "vendorName": "Acme Office Supplies Inc.",
+        "vendorTaxId": "US-84-1029384",
+        "invoiceNumber": "INV-A-1987",
+        "poNumber": "PO-0961",
+        "issueDate": "2026-08-28",
+        "dueDate": "2026-09-27",
+        "currency": "USD",
+        "lineItems": [
+          {
+            "description": "A4 copy paper, 5-ream case",
+            "quantity": 30,
+            "unitPrice": "42.50",
+            "total": "1275.00"
+          },
+          {
+            "description": "Whiteboard markers, 12-pack",
+            "quantity": 10,
+            "unitPrice": "14.50",
+            "total": "145.00"
+          }
+        ],
+        "subtotal": "1420.00",
+        "tax": "113.60",
+        "total": "1533.60"
+      }
+    },
+    {
+      "file": "northwind-nwl-87940.pdf",
+      "story": "Clean match, auto-approved",
+      "daysAgo": 21,
+      "processingSeconds": 7,
+      "confidence": 0.96,
+      "outcome": "AUTO_APPROVED",
+      "invoice": {
+        "isInvoice": true,
+        "vendorName": "Northwind Logistics LLC",
+        "vendorTaxId": "US-27-5561902",
+        "invoiceNumber": "NWL-87940",
+        "poNumber": "PO-0962",
+        "issueDate": "2026-09-01",
+        "dueDate": "2026-10-01",
+        "currency": "USD",
+        "lineItems": [
+          {
+            "description": "Freight, Chicago to Minneapolis, full truckload",
+            "quantity": 3,
+            "unitPrice": "1980.00",
+            "total": "5940.00"
+          }
+        ],
+        "subtotal": "5940.00",
+        "tax": "0.00",
+        "total": "5940.00"
+      }
+    },
+    {
+      "file": "lumen-ls-2026-0915.pdf",
+      "story": "EUR invoice against a EUR PO, auto-approved",
+      "daysAgo": 19,
+      "processingSeconds": 8,
+      "confidence": 0.95,
+      "outcome": "AUTO_APPROVED",
+      "invoice": {
+        "isInvoice": true,
+        "vendorName": "Lumen Software GmbH",
+        "vendorTaxId": "DE-298374615",
+        "invoiceNumber": "LS-2026-0915",
+        "poNumber": "PO-0963",
+        "issueDate": "2026-09-03",
+        "dueDate": "2026-10-03",
+        "currency": "EUR",
+        "lineItems": [
+          {
+            "description": "Data pipeline support, September",
+            "quantity": 1,
+            "unitPrice": "4200.00",
+            "total": "4200.00"
+          }
+        ],
+        "subtotal": "4200.00",
+        "tax": "0.00",
+        "total": "4200.00"
+      }
+    },
+    {
+      "file": "harbor-hp-5521.pdf",
+      "story": "Extra print run billed over the PO; a reviewer approved it with a note",
+      "daysAgo": 14,
+      "processingSeconds": 11,
+      "confidence": 0.94,
+      "outcome": "APPROVED",
+      "discrepancies": [
+        {
+          "type": "AMOUNT_MISMATCH",
+          "severity": "BLOCKING",
+          "message": "Subtotal $780.00 is 50.0% over the $520.00 remaining on PO-0964.",
+          "expected": "<= $520.00",
+          "actual": "$780.00"
+        },
+        {
+          "type": "QUANTITY_MISMATCH",
+          "severity": "BLOCKING",
+          "message": "\"Event flyers, A5, 2000 count\": invoiced 3, but PO-0964 ordered 2.",
+          "expected": "<= 2",
+          "actual": "3"
+        }
+      ],
+      "explanation": "Harbor Print billed three flyer runs, but PO-0964 only covers two. That puts the subtotal $260.00 (50%) over what the PO allows. Confirm the third run was ordered before approving.",
+      "review": {
+        "afterHours": 3,
+        "note": "Marketing ordered a third run by phone; PO amendment to follow."
+      },
+      "invoice": {
+        "isInvoice": true,
+        "vendorName": "Harbor Print Co.",
+        "vendorTaxId": "US-46-7720135",
+        "invoiceNumber": "HP-5521",
+        "poNumber": "PO-0964",
+        "issueDate": "2026-09-18",
+        "dueDate": "2026-10-18",
+        "currency": "USD",
+        "lineItems": [
+          {
+            "description": "Event flyers, A5, 2000 count",
+            "quantity": 3,
+            "unitPrice": "260.00",
+            "total": "780.00"
+          }
+        ],
+        "subtotal": "780.00",
+        "tax": "56.55",
+        "total": "836.55"
+      }
+    },
+    {
+      "file": "cedar-cit-3290.pdf",
+      "story": "Work billed without a PO; a reviewer rejected it",
+      "daysAgo": 10,
+      "processingSeconds": 8,
+      "confidence": 0.93,
+      "outcome": "REJECTED",
+      "discrepancies": [
+        {
+          "type": "NO_MATCHING_PO",
+          "severity": "WARNING",
+          "message": "No open purchase order found for this vendor."
+        }
+      ],
+      "explanation": "Cedar IT billed an after-hours callout with no PO number, and none of Cedar's open purchase orders matches the $900.00 amount. Check whether this work was authorised.",
+      "review": {
+        "afterHours": 5,
+        "reason": "No PO for this work. Asked Cedar to resend against a PO."
+      },
+      "invoice": {
+        "isInvoice": true,
+        "vendorName": "Cedar IT Services",
+        "vendorTaxId": "US-63-9081726",
+        "invoiceNumber": "CIT-3290",
+        "poNumber": null,
+        "issueDate": "2026-09-30",
+        "dueDate": "2026-10-30",
+        "currency": "USD",
+        "lineItems": [
+          {
+            "description": "Emergency server room callout, after hours",
+            "quantity": 6,
+            "unitPrice": "150.00",
+            "total": "900.00"
+          }
+        ],
+        "subtotal": "900.00",
+        "tax": "0.00",
+        "total": "900.00"
+      }
+    },
+    {
+      "file": "brightline-bl-0917.pdf",
+      "story": "October cleaning, auto-approved. Sample invoice 3 is the vendor resending it.",
+      "daysAgo": 6,
+      "processingSeconds": 7,
+      "confidence": 0.97,
+      "outcome": "AUTO_APPROVED",
+      "invoice": {
+        "isInvoice": true,
+        "vendorName": "Brightline Facility Services",
+        "vendorTaxId": "US-91-3348271",
+        "invoiceNumber": "BL-0917",
+        "poNumber": "PO-1003",
+        "issueDate": "2026-10-01",
+        "dueDate": "2026-10-31",
+        "currency": "USD",
+        "lineItems": [
+          {
+            "description": "Monthly office cleaning, October",
+            "quantity": 1,
+            "unitPrice": "3200.00",
+            "total": "3200.00"
+          }
+        ],
+        "subtotal": "3200.00",
+        "tax": "0.00",
+        "total": "3200.00"
+      }
+    }
+  ]
+}

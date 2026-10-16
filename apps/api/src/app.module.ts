@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AgentModule } from './agent/agent.module';
+import { DemoModule } from './demo/demo.module';
 import { EnvModule } from './common/env.module';
 import { ErpModule } from './erp/erp.module';
 import { EventsModule } from './events/events.module';
@@ -27,6 +28,7 @@ import { StorageModule } from './storage/storage.module';
     StatsModule,
     SamplesModule,
     AgentModule,
+    DemoModule,
   ],
   controllers: [HealthController],
 })

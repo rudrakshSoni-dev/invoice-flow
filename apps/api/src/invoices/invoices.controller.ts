@@ -60,6 +60,12 @@ export class InvoicesController {
     return this.invoices.reject(id, parseOrThrow(rejectInvoiceSchema, body ?? {}));
   }
 
+  @Post(':id/retry')
+  @HttpCode(202)
+  retry(@Param('id') id: string) {
+    return this.invoices.retry(id);
+  }
+
   @Get(':id/file')
   @Header('Content-Type', 'application/pdf')
   @Header('Content-Disposition', 'inline')

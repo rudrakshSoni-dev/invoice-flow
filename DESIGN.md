@@ -112,6 +112,7 @@ GET    /invoices/:id             detail incl. lines, discrepancies, audit events
 PATCH  /invoices/:id             edit extracted fields during review (NEEDS_REVIEW only; amounts as decimal strings)
 POST   /invoices/:id/approve     body: optional note; human approve, triggers posting
 POST   /invoices/:id/reject      body: reason
+POST   /invoices/:id/retry       FAILED only: clears the failed attempt and queues the invoice again
 GET    /invoices/:id/file        signed URL or stream of the original PDF
 GET    /ledger                   list ledger entries
 GET    /purchase-orders          list POs with billed balance
@@ -120,11 +121,13 @@ GET    /events (SSE)             live status updates for the dashboard
 GET    /vendors                  vendors, for assigning one during review
 GET    /samples                  the fixture invoices offered in "Try a sample invoice"
 POST   /samples/:id              queue a fixture invoice exactly like an upload
+POST   /demo/reset               reseed the demo workspace (with history) and delete uploaded files
 ```
 
 - `PATCH` records a `REVIEWED` audit event listing each changed field (from/to). Discrepancies stay as the agent found them; the reviewer's edits and decision are the audit record. Assigning a vendor is how an unknown-vendor invoice becomes approvable.
 - `/stats`: `processed` is every invoice no longer `PROCESSING`; auto-approval rate is `AUTO_APPROVED / processed`; processing time is upload to the `DECIDED` audit event.
-- `/events` sends `invoice.status` and `invoice.stage` (EXTRACT, MATCH, CHECK, POST) events from an in-process bus. The demo runs as one instance; scaling out would move this to Postgres `LISTEN/NOTIFY`. The UI also polls while an invoice is `PROCESSING`, so a dropped connection only delays updates.
+- Retry records a `REVIEWED` audit event ("Retry requested by reviewer"); earlier agent runs and audit events are kept.
+- `/events` sends `invoice.status` and `invoice.stage` (EXTRACT, MATCH, CHECK, POST) events, plus `demo.reset` so open tabs refetch after a reset, from an in-process bus. The demo runs as one instance; scaling out would move this to Postgres `LISTEN/NOTIFY`. The UI also polls while an invoice is `PROCESSING`, so a dropped connection only delays updates.
 
 ## 9. Screens
 
@@ -194,6 +197,8 @@ The seed script creates:
   8. Math error in the invoice totals
   9. Missing PO reference but matchable by vendor and amount
   10. Garbage input (fails cleanly)
+
+**Pre-seeded history** (`fixtures/history/manifest.json`, with rendered PDFs): six past invoices received over the last few weeks, written as if the pipeline and a reviewer had already handled them, against four extra history POs that end fully billed. Four auto-approved (including one in EUR), one over-billed print run approved with a reviewer note, and one invoice without a PO rejected. The last is Brightline's BL-0917, so sample invoice 3 arrives as a real duplicate. `prisma db seed` and `POST /demo/reset` load the history; tests seed vendors and POs only.
 
 **Demo script (60-90 seconds)**
 1. Open dashboard with pre-seeded history.

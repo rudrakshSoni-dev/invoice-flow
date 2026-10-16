@@ -1,5 +1,5 @@
 /**
- * Boots the compiled API with FixtureLlmProvider on its own `e2e` schema.
+ * Boots the compiled API with FixtureLlmProvider on its own `e2e` schema, seeded with demo history.
  *   pnpm --filter api serve:fixtures
  * Used by Playwright and for local UI work without an LLM key.
  */
@@ -8,8 +8,6 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Test } from '@nestjs/testing';
-import { PrismaClient } from '@prisma/client';
-import { seedDatabase } from '../prisma/seed';
 import { FixtureLlmProvider } from './fixture-llm';
 
 // The compiled app carries Nest's decorator metadata, which tsx cannot emit from source, so it
@@ -18,6 +16,8 @@ import { FixtureLlmProvider } from './fixture-llm';
 const { AppModule } = require('../dist/app.module') as typeof import('../src/app.module');
 const { DomainExceptionFilter } =
   require('../dist/common/domain-exception.filter') as typeof import('../src/common/domain-exception.filter');
+const { DemoService } =
+  require('../dist/demo/demo.service') as typeof import('../src/demo/demo.service');
 const { LLM_PROVIDER } =
   require('../dist/llm/llm-provider') as typeof import('../src/llm/llm-provider');
 
@@ -33,10 +33,6 @@ async function main(): Promise<void> {
   process.env.APP_BASE_URL = process.env.E2E_WEB_URL ?? 'http://localhost:5174';
 
   execSync('prisma migrate deploy', { stdio: 'ignore', env: process.env });
-  const prisma = new PrismaClient();
-  await seedDatabase(prisma);
-  await prisma.$disconnect();
-
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(LLM_PROVIDER)
     .useValue(new FixtureLlmProvider())
@@ -45,6 +41,8 @@ async function main(): Promise<void> {
   app.useGlobalFilters(new DomainExceptionFilter());
   app.enableCors({ origin: process.env.APP_BASE_URL });
   app.enableShutdownHooks();
+  await app.init();
+  await app.get(DemoService).reset();
   await app.listen(port);
   console.log(`Fixture API listening on http://localhost:${port}`);
 }

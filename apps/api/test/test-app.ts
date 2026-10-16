@@ -3,8 +3,8 @@ import { Test } from '@nestjs/testing';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { seedDatabase } from '../prisma/seed';
 import { AppModule } from '../src/app.module';
+import { seedDatabase } from '../src/demo/demo-seed';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter';
 import { type Env, loadEnv } from '../src/common/env';
 import { ENV } from '../src/common/env.module';
@@ -28,11 +28,12 @@ export type TestApp = {
 
 /** Full AppModule against the test schema, with temp file storage, a scripted LLM, and no background worker. */
 export async function createTestApp(envOverrides: Partial<Env> = {}): Promise<TestApp> {
+  const env = { ...loadEnv(), WORKER_ENABLED: false, ...envOverrides };
   const uploadDir = await mkdtemp(join(tmpdir(), 'invoiceflow-uploads-'));
   const llm = new ScriptedLlmProvider();
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(ENV)
-    .useValue({ ...loadEnv(), WORKER_ENABLED: false, ...envOverrides })
+    .useValue(env)
     .overrideProvider(FILE_STORAGE)
     .useValue(new LocalFileStorage(uploadDir))
     .overrideProvider(LLM_PROVIDER)
@@ -62,7 +63,7 @@ export async function createTestApp(envOverrides: Partial<Env> = {}): Promise<Te
     processFixture,
     reset: async () => {
       llm.clear();
-      await seedDatabase(prisma);
+      await seedDatabase(prisma, { fixturesDir: env.FIXTURES_DIR });
     },
     close: async () => {
       await app.close();

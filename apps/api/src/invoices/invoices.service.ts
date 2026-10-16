@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { InvoiceStatus, Prisma } from '@prisma/client';
+import { type InvoiceStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { InvoicePipeline } from '../agent/invoice-pipeline.service';
@@ -148,6 +148,49 @@ export class InvoicesService {
       });
     });
     this.pipeline.emitStatus(id, 'REJECTED');
+    return this.detail(id);
+  }
+
+  /** Clears a failed attempt and queues the invoice again. Earlier agent runs stay for the audit. */
+  async retry(id: string) {
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.invoice.updateMany({
+        where: { id, status: 'FAILED' },
+        data: {
+          status: 'PROCESSING',
+          vendorId: null,
+          purchaseOrderId: null,
+          invoiceNumber: null,
+          issueDate: null,
+          dueDate: null,
+          currency: null,
+          subtotalMinor: null,
+          taxMinor: null,
+          totalMinor: null,
+          confidence: null,
+          rawExtraction: Prisma.DbNull,
+        },
+      });
+      if (count !== 1) {
+        const invoice = await tx.invoice.findUnique({ where: { id }, select: { status: true } });
+        if (!invoice) throw new NotFoundError(`Invoice ${id} not found`);
+        throw new InvalidStateError(
+          `Only failed invoices can be retried (this one is ${invoice.status})`,
+        );
+      }
+      await tx.invoiceLine.deleteMany({ where: { invoiceId: id } });
+      await tx.discrepancy.deleteMany({ where: { invoiceId: id } });
+      await tx.auditEvent.create({
+        data: {
+          invoiceId: id,
+          step: 'REVIEWED',
+          actor: 'USER',
+          summary: 'Retry requested by reviewer',
+        },
+      });
+      await tx.job.create({ data: { type: PROCESS_INVOICE_JOB, invoiceId: id } });
+    });
+    this.pipeline.emitStatus(id, 'PROCESSING');
     return this.detail(id);
   }
 

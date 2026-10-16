@@ -1,5 +1,8 @@
 import request from 'supertest';
+import { perfectOutputFor } from '../../test/fake-llm';
 import { createTestApp, type TestApp } from '../../test/test-app';
+import { JobWorker } from '../agent/job-worker.service';
+import { LlmError } from '../llm/llm-provider';
 
 describe('Invoice review and ledger API', () => {
   let t: TestApp;
@@ -107,6 +110,36 @@ describe('Invoice review and ledger API', () => {
         summary: 'Rejected by reviewer: Vendor must reissue in EUR',
       });
       expect((await http().get('/ledger')).body.total).toBe(0);
+    });
+  });
+
+  describe('POST /invoices/:id/retry', () => {
+    it('requeues a failed invoice and processes it again', async () => {
+      const id = await t.processFixture(
+        '01-clean-acme.pdf',
+        new LlmError('LLM_API_KEY is not set', false),
+      );
+      expect((await http().get(`/invoices/${id}`)).body.status).toBe('FAILED');
+
+      const res = await http().post(`/invoices/${id}/retry`).expect(202);
+      expect(res.body).toMatchObject({ status: 'PROCESSING', rawExtraction: null, lines: [] });
+      expect(res.body.auditEvents.at(-1)).toMatchObject({
+        step: 'REVIEWED',
+        actor: 'USER',
+        summary: 'Retry requested by reviewer',
+      });
+
+      t.llm.push(perfectOutputFor('01-clean-acme.pdf'));
+      await t.app.get(JobWorker).runOnce();
+      const after = (await http().get(`/invoices/${id}`)).body;
+      expect(after.status).toBe('AUTO_APPROVED');
+      expect(after.lines).toHaveLength(2);
+    });
+
+    it('refuses to retry an invoice that did not fail', async () => {
+      const id = await t.processFixture('01-clean-acme.pdf');
+      const res = await http().post(`/invoices/${id}/retry`).expect(409);
+      expect(res.body.message).toContain('Only failed invoices can be retried');
     });
   });
 });
