@@ -14,4 +14,10 @@ describe('loadEnv', () => {
       loadEnv({ DATABASE_URL: 'postgresql://u:p@localhost:5432/db', LLM_PROVIDER: 'cohere' }),
     ).toThrow('LLM_PROVIDER');
   });
+
+  it('requires a bucket for Cloud Storage', () => {
+    const base = { DATABASE_URL: 'postgresql://u:p@localhost:5432/db', STORAGE_DRIVER: 'gcs' };
+    expect(() => loadEnv(base)).toThrow('GCS_BUCKET: required when STORAGE_DRIVER=gcs');
+    expect(loadEnv({ ...base, GCS_BUCKET: 'demo-invoices' }).GCS_BUCKET).toBe('demo-invoices');
+  });
 });
