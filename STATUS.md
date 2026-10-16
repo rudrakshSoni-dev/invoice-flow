@@ -28,7 +28,7 @@ These need the user (accounts, keys, a camera), in this order:
 3. **Deploy.** Follow README "Deploy": the API on Render (`render.yaml` Blueprint), then the web app on Vercel (Root Directory `apps/web`, `VITE_API_URL` = the Render URL), then set Render's `APP_BASE_URL` to the Vercel URL. Neither config has been run against a real account yet, so expect small fixes on the first run. Then `curl -X POST <api>/demo/reset`, open the Vercel URL, and try samples 01 and 02.
 4. **Video.** Record from `docs/demo-script.md` against the deployed app.
 5. **README.** Replace the "not deployed yet" line at the top with the live URL and the video link.
-6. **GitHub.** Push the repo so CI (`.github/workflows/ci.yml`) runs for the first time.
+6. **GitHub.** Done: public at https://github.com/rudrakshSoni-dev/invoice-flow, and CI passes on `main`. Connect Render and Vercel to this repo.
 
 Smaller deferred work is listed in `docs/next-steps.md`.
 
