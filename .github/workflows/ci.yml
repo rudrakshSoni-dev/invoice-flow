@@ -31,6 +31,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter api exec prisma generate
       - run: pnpm --filter api exec prisma migrate deploy
       - run: pnpm --filter api exec prisma db seed
       - run: pnpm lint
