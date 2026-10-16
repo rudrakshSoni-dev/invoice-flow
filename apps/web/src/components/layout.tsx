@@ -1,19 +1,57 @@
-import { useQuery } from '@tanstack/react-query';
-import { Moon, ReceiptText, Sun } from 'lucide-react';
-import { useState } from 'react';
+import { type UseQueryResult, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Moon, ReceiptText, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
-import { api } from '../lib/api';
+import { api, type Health } from '../lib/api';
 import { cn } from '../lib/cn';
 import { applyTheme, readTheme, type Theme } from '../lib/theme';
 import { ResetDemoButton } from './reset-demo-button';
 import { Button, focusRing } from './ui/button';
 
-function ApiStatus() {
+// The hosted API sleeps when idle and takes a while to wake, so keep checking for about a minute.
+const HEALTH_RETRIES = 20;
+const HEALTH_RETRY_DELAY_MS = 3_000;
+const SLOW_START_MS = 3_000;
+
+function useApiHealth() {
+  const queryClient = useQueryClient();
   const health = useQuery({
     queryKey: ['health'],
     queryFn: ({ signal }) => api.health(signal),
-    retry: false,
+    retry: HEALTH_RETRIES,
+    retryDelay: HEALTH_RETRY_DELAY_MS,
   });
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    if (!health.isPending) return;
+    const timer = setTimeout(() => setSlow(true), SLOW_START_MS);
+    return () => clearTimeout(timer);
+  }, [health.isPending]);
+
+  // Once a slow start finishes, refetch whatever failed while the API was asleep.
+  useEffect(() => {
+    if (slow && health.isSuccess) {
+      void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'health' });
+    }
+  }, [slow, health.isSuccess, queryClient]);
+
+  return { health, waking: slow && health.isPending };
+}
+
+function WakingBanner() {
+  return (
+    <div role="status" className="border-b border-border bg-surface">
+      <p className="mx-auto flex max-w-[1200px] items-center gap-2 px-4 py-2 text-sm text-text-muted">
+        <Loader2 aria-hidden="true" className="size-4 shrink-0 animate-spin" />
+        Waking up the demo server. It sleeps when idle on a free tier, so the first load can take up
+        to a minute.
+      </p>
+    </div>
+  );
+}
+
+function ApiStatus({ health }: { health: UseQueryResult<Health> }) {
   const state = health.isPending ? 'checking' : health.isError ? 'unreachable' : 'healthy';
   const label = {
     checking: 'Checking API',
@@ -44,6 +82,7 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
   );
 
 export function Layout() {
+  const { health, waking } = useApiHealth();
   const [theme, setTheme] = useState<Theme>(readTheme);
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -85,6 +124,7 @@ export function Layout() {
           </Button>
         </div>
       </header>
+      {waking && <WakingBanner />}
       <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6">
         <Outlet />
       </main>
@@ -92,7 +132,7 @@ export function Layout() {
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-xs text-text-muted">
           <span className="mr-auto">InvoiceFlow demo · AI agent for accounts payable</span>
           <ResetDemoButton />
-          <ApiStatus />
+          <ApiStatus health={health} />
         </div>
       </footer>
     </div>

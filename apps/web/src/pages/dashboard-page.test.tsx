@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, vi } from 'vitest';
 import { emptyStats, listItems, stats } from '../test/data';
@@ -67,7 +67,8 @@ describe('Dashboard', () => {
     );
   });
 
-  it('reports an unreachable API with text, not only color', async () => {
+  it('reports an unreachable API with text, not only color, once it stops retrying', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     mockApi({
       'GET /health': new Response(null, { status: 503 }),
       'GET /stats': emptyStats,
@@ -75,7 +76,11 @@ describe('Dashboard', () => {
       'GET /samples': [],
     });
     renderAt('/');
+    await act(() => vi.advanceTimersByTimeAsync(3_000));
+    expect(screen.getByText(/Waking up the demo server/)).toBeInTheDocument();
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
     expect(await screen.findByText('API unreachable')).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it('resets the demo data after confirmation', async () => {

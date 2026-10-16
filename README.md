@@ -1,6 +1,8 @@
 # InvoiceFlow
 
-**Live demo:** not deployed yet (see [Deploy](#deploy)) · **Demo video:** to be recorded from [`docs/demo-script.md`](docs/demo-script.md)
+**Live demo:** not deployed yet (see [Deploy](#deploy)) · **Demo video (90 s):** to be recorded from [`docs/demo-script.md`](docs/demo-script.md)
+
+> **The first load can take up to a minute.** The live demo runs on free hosting, and its server sleeps after an hour without visitors. The page says when it is waking up, and everything is fast after that. To see the whole flow without waiting, watch the video.
 
 Accounts payable teams still retype vendor invoices into their ERP, check each one against a purchase order by hand, and catch over-billing and duplicates only when someone happens to notice. InvoiceFlow is an AI agent that does that first pass: it reads an invoice PDF, extracts the fields, matches the vendor and purchase order, flags anything that doesn't add up, and posts clean invoices to the ledger on its own. Anything it is not sure about goes to a person, with the discrepancy highlighted and explained in plain English, and every step is in an audit trail.
 
