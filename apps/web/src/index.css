@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+/* Semantic tokens from DESIGN.md section 10. Dark is the default theme. */
+:root {
+  --color-bg: #0b0d10;
+  --color-surface: #12151a;
+  --color-border: #1f242c;
+  --color-text: #e8eaed;
+  --color-text-muted: #9aa3ae;
+  --color-accent: #4f8cff;
+  --color-approved: #2ebd85;
+  --color-review: #f5a524;
+  --color-failed: #f04438;
+  --color-processing: #4f8cff;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-border: #e1e4e8;
+  --color-text: #12151a;
+  --color-text-muted: #5b6470;
+  --color-accent: #2563eb;
+  --color-approved: #12805c;
+  --color-review: #a15c00;
+  --color-failed: #c4320a;
+  --color-processing: #2563eb;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-accent: var(--color-accent);
+  --color-approved: var(--color-approved);
+  --color-review: var(--color-review);
+  --color-failed: var(--color-failed);
+  --color-processing: var(--color-processing);
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --radius-card: 12px;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.amount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
