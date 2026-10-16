@@ -217,14 +217,17 @@ The seed script creates:
 
 ## 13. Deployment
 
-- Dockerfile per app, deployed to Cloud Run. Managed Postgres.
+- Primary target: web on Vercel, API on Render, Postgres on Neon.
+  - `apps/web/vercel.json`: Vercel builds the static app (project root `apps/web`) and serves it with an SPA fallback. `VITE_API_URL` points the browser at the API directly; the API allows that origin through CORS (`APP_BASE_URL`). Vercel functions can't host the API, since it needs a background worker and a long-lived SSE stream.
+  - `render.yaml`: a Render Blueprint running the API Docker image as one instance. Render has no durable disk, so invoice files live in Postgres (`STORAGE_DRIVER=db`, the `StoredFile` table).
+- Alternative: Dockerfile per app, deployed to Cloud Run. Managed Postgres.
   - `deploy/cloud-run.sh` builds with Cloud Build and deploys two services. `invoiceflow-web` is nginx serving the static build and proxying `/api` to the API, so the browser stays same-origin and the SSE stream is unbuffered.
   - `invoiceflow-api` runs `prisma migrate deploy` at startup, as one instance (in-process event bus) with CPU always allocated so the worker keeps running after an upload returns.
   - Postgres is any managed instance reachable by a direct connection string (Neon or Cloud SQL). The script seeds the demo through `POST /demo/reset` when the database is empty.
 - Secrets via environment variables, never committed.
 - Public demo URL with the seeded workspace; a "Reset demo data" button in the footer.
 - Uploaded files limited to 10 MB PDFs, scanned for type, and deleted after 24 hours in the public demo.
-  - Files live in Cloud Storage (`STORAGE_DRIVER=gcs`) on Cloud Run, local disk otherwise.
+  - Files live in Postgres (`STORAGE_DRIVER=db`) on Render, Cloud Storage (`gcs`) on Cloud Run, local disk otherwise.
   - Expiry runs in the API (`UPLOAD_RETENTION_HOURS=24`, swept at boot and hourly) rather than as a bucket lifecycle rule, so the invoice row, its ledger entry and its PO billing are removed together with the file. Seeded history is never expired.
 
 ## 14. Next steps (list in README, do not build now)

@@ -28,7 +28,7 @@ flowchart TB
   end
   LLM["LlmProvider<br/>(Gemini)"]
   DB[(PostgreSQL<br/>invoices · POs · audit · ledger)]
-  Files[(FileStorage<br/>local disk / Cloud Storage)]
+  Files[(FileStorage<br/>local disk / Postgres / Cloud Storage)]
 
   UI --> Static
   UI -- fetch + EventSource --> Proxy --> REST
@@ -85,6 +85,19 @@ CI runs all of these on every push.
 
 ## Deploy
 
+The web app runs on Vercel, the API on Render (one Docker instance with the job worker), and Postgres on Neon. Invoice files are stored in Postgres, and visitor uploads are deleted after 24 hours.
+
+1. **Neon:** create a database and copy its **direct** (non-pooled) connection string. The API runs migrations through it at startup, which a pooler breaks.
+2. **Render:** New → Blueprint, and pick this repo. `render.yaml` defines `invoiceflow-api`. Fill in `DATABASE_URL`, `LLM_API_KEY`, and `APP_BASE_URL` (the Vercel URL from step 3; a placeholder is fine for the first deploy). Then load the demo data:
+   ```sh
+   curl -X POST https://<api>.onrender.com/demo/reset
+   ```
+3. **Vercel:** import the repo, set Root Directory to `apps/web`, and set `VITE_API_URL=https://<api>.onrender.com`. `apps/web/vercel.json` covers the build and SPA routing. Then put the Vercel URL in Render's `APP_BASE_URL` (CORS) and redeploy the API.
+
+The browser calls the API directly rather than through a Vercel rewrite, so the SSE stream and 10 MB uploads aren't subject to proxy limits. On Render's free plan the API sleeps after 15 idle minutes and takes about a minute to wake; the paid Starter plan stays up.
+
+### Alternative: Cloud Run
+
 `deploy/cloud-run.sh` deploys both apps to Cloud Run, with invoice files in Cloud Storage, secrets in Secret Manager, and visitor uploads deleted after 24 hours. It is safe to re-run.
 
 ```sh
@@ -116,5 +129,6 @@ Use a direct (non-pooled) connection string for a managed Postgres such as Neon 
 - `fixtures/seed`: vendors and purchase orders
 - `fixtures/invoices`: 10 sample invoices covering each pipeline path, with ground truth in `manifest.json` (`pnpm --filter api fixtures:generate` re-renders them)
 - `fixtures/history`: the past invoices the demo opens with (the "Reset demo data" footer button restores them)
-- `deploy`: Cloud Run deploy script
+- `render.yaml`, `apps/web/vercel.json`: Render (API) and Vercel (web) deploy config
+- `deploy`: Cloud Run deploy script (alternative)
 - `docs`: demo script, eval results, deferred work

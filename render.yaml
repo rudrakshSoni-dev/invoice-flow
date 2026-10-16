@@ -1,0 +1,31 @@
+# Render Blueprint for the API: the same Docker image as docker compose, one instance.
+# The web app is on Vercel (apps/web/vercel.json). See README "Deploy".
+services:
+  - type: web
+    name: invoiceflow-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    # One instance: live updates use an in-process event bus (DESIGN.md section 8).
+    numInstances: 1
+    envVars:
+      # Neon direct (non-pooled) connection string: migrations run at startup.
+      - key: DATABASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      # The Vercel URL of the web app, for CORS.
+      - key: APP_BASE_URL
+        sync: false
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: LLM_MODEL
+        value: gemini-2.5-flash
+      # No durable disk on Render: invoice files live in Postgres.
+      - key: STORAGE_DRIVER
+        value: db
+      - key: UPLOAD_RETENTION_HOURS
+        value: '24'
