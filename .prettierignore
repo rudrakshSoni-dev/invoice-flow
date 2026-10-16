@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+dist
+coverage
+apps/api/prisma/migrations
+CLAUDE.md
+DESIGN.md
