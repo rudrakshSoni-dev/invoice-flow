@@ -7,7 +7,7 @@ Accounts payable teams still retype vendor invoices into their ERP, check each o
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph Browser
     UI["React app<br/>dashboard · review · ledger"]
   end
@@ -35,7 +35,7 @@ flowchart LR
   REST -- upload --> Files
   REST -- enqueue --> Queue --> Worker --> Pipeline
   E -. extract, explain .-> LLM
-  Pipeline -- one transaction --> DB
+  P -- results, in one transaction --> DB
 ```
 
 1. **Extract.** Text PDFs go through `pdf-parse`. Scans, which have no text layer, are sent to the model as the PDF itself. The model's JSON is untrusted: it is validated with Zod, and on failure the validation errors are sent back for up to 2 retries before the invoice is marked `FAILED` with the raw output kept for debugging.
