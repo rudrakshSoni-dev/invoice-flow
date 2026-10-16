@@ -2,7 +2,7 @@
 
 An AI agent that reads vendor invoices, extracts structured fields, matches them against purchase orders, flags mismatches, and posts approved results to an ERP-style ledger. Humans review anything the agent is not sure about, and every decision is auditable.
 
-> Status: milestone 5 (decision and ledger posting); UI next. See [`DESIGN.md`](DESIGN.md) for the product and technical design.
+> Status: milestone 6 (UI). Polish and deploy next. See [`DESIGN.md`](DESIGN.md) for the product and technical design.
 
 ## Run locally
 
@@ -14,10 +14,13 @@ pnpm install && pnpm --filter api prisma migrate dev && pnpm --filter api prisma
 pnpm dev                                               # API on :3000, web on :5173
 ```
 
+Without an LLM key you can still click through the whole app: `pnpm --filter api serve:fixtures` starts the API on :3100 with a stand-in model that knows the sample invoices, then run the web app against it with `API_PROXY_TARGET=http://localhost:3100 pnpm --filter web dev`.
+
 ## Checks
 
 ```sh
 pnpm lint && pnpm typecheck && pnpm test
+pnpm e2e    # Playwright: upload → auto-approved → ledger (first run: npx playwright install chromium)
 ```
 
 ## Fixtures and eval

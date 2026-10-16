@@ -109,7 +109,7 @@ Every stage writes an `AuditEvent`. Stages only read and call the LLM; their res
 POST   /invoices                 multipart upload, returns invoice id, status PROCESSING
 GET    /invoices                 list with filters (status), pagination
 GET    /invoices/:id             detail incl. lines, discrepancies, audit events, matched PO
-PATCH  /invoices/:id             edit extracted fields during review
+PATCH  /invoices/:id             edit extracted fields during review (NEEDS_REVIEW only; amounts as decimal strings)
 POST   /invoices/:id/approve     body: optional note; human approve, triggers posting
 POST   /invoices/:id/reject      body: reason
 GET    /invoices/:id/file        signed URL or stream of the original PDF
@@ -117,7 +117,14 @@ GET    /ledger                   list ledger entries
 GET    /purchase-orders          list POs with billed balance
 GET    /stats                    counts by status, auto-approval rate, avg processing time
 GET    /events (SSE)             live status updates for the dashboard
+GET    /vendors                  vendors, for assigning one during review
+GET    /samples                  the fixture invoices offered in "Try a sample invoice"
+POST   /samples/:id              queue a fixture invoice exactly like an upload
 ```
+
+- `PATCH` records a `REVIEWED` audit event listing each changed field (from/to). Discrepancies stay as the agent found them; the reviewer's edits and decision are the audit record. Assigning a vendor is how an unknown-vendor invoice becomes approvable.
+- `/stats`: `processed` is every invoice no longer `PROCESSING`; auto-approval rate is `AUTO_APPROVED / processed`; processing time is upload to the `DECIDED` audit event.
+- `/events` sends `invoice.status` and `invoice.stage` (EXTRACT, MATCH, CHECK, POST) events from an in-process bus. The demo runs as one instance; scaling out would move this to Postgres `LISTEN/NOTIFY`. The UI also polls while an invoice is `PROCESSING`, so a dropped connection only delays updates.
 
 ## 9. Screens
 
@@ -163,8 +170,8 @@ Direction: calm, dense, trustworthy. This is a finance tool, so clarity beats fl
 - Max content width 1200px. Table rows 48px tall.
 - Responsive down to tablet; mobile shows the invoice list and a simplified detail.
 
-**Components** (build with shadcn/ui primitives)
-Button, Card, Badge, Table, Tabs, Dialog, Toast, Skeleton, Tooltip, Progress stepper.
+**Components** (shadcn/ui-style primitives in `apps/web/src/components/ui`, on Radix)
+Button, Card, Badge, Table, Dialog, Toast, Skeleton, Tooltip, Progress stepper. Tabs were not needed: on narrow screens the detail page drops the PDF pane for an "View original PDF" link instead.
 
 **Motion**
 - Subtle: 150ms fades, row highlight on live update, stepper pulse. No decorative animation.
