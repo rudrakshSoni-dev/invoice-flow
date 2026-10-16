@@ -10,6 +10,7 @@ describe('toMinor', () => {
 
   it('respects zero-decimal currencies', () => {
     expect(toMinor('1500', 'JPY')).toBe(1500);
+    expect(toMinor('1500.00', 'JPY')).toBe(1500);
   });
 
   it('rejects malformed or over-precise amounts', () => {

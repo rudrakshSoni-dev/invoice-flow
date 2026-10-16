@@ -11,8 +11,10 @@ export function toMinor(amount: string, currency: string): number {
   const match = /^(-)?(\d+)(?:\.(\d+))?$/.exec(cleaned);
   if (!match) throw new Error(`Not a decimal amount: "${amount}"`);
   const [, sign, whole = '0', fraction = ''] = match;
-  if (fraction.length > digits) throw new Error(`Too many decimals for ${currency}: "${amount}"`);
-  const minor = Number(whole + fraction.padEnd(digits, '0'));
+  if (fraction.length > digits && /[^0]/.test(fraction.slice(digits))) {
+    throw new Error(`Too many decimals for ${currency}: "${amount}"`);
+  }
+  const minor = Number(whole + fraction.slice(0, digits).padEnd(digits, '0'));
   return sign ? -minor : minor;
 }
 
