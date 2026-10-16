@@ -1,20 +1,78 @@
 # InvoiceFlow
 
-An AI agent that reads vendor invoices, extracts structured fields, matches them against purchase orders, flags mismatches, and posts approved results to an ERP-style ledger. Humans review anything the agent is not sure about, and every decision is auditable.
+**Live demo:** not deployed yet (see [Deploy](#deploy)) · **Demo video:** to be recorded from [`docs/demo-script.md`](docs/demo-script.md)
 
-> Status: milestone 7 (polish). Deploy next. See [`DESIGN.md`](DESIGN.md) for the product and technical design.
+Accounts payable teams still retype vendor invoices into their ERP, check each one against a purchase order by hand, and catch over-billing and duplicates only when someone happens to notice. InvoiceFlow is an AI agent that does that first pass: it reads an invoice PDF, extracts the fields, matches the vendor and purchase order, flags anything that doesn't add up, and posts clean invoices to the ledger on its own. Anything it is not sure about goes to a person, with the discrepancy highlighted and explained in plain English, and every step is in an audit trail.
+
+## How it works
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI["React app<br/>dashboard · review · ledger"]
+  end
+  subgraph web["web (nginx)"]
+    Static[static build]
+    Proxy["/api proxy"]
+  end
+  subgraph api["api (NestJS)"]
+    REST[REST + SSE]
+    Queue[(Postgres job table)]
+    Worker[job worker]
+    subgraph Pipeline["agent pipeline"]
+      direction LR
+      E["1 · Extract<br/>pdf-parse, or the PDF itself<br/>for scans → LLM → Zod"] --> M["2 · Match<br/>vendor by tax ID / name<br/>PO by number / amount"]
+      M --> C["3 · Check & decide<br/>rules only"]
+      C --> P["4 · Post<br/>ErpAdapter"]
+    end
+  end
+  LLM["LlmProvider<br/>(Gemini)"]
+  DB[(PostgreSQL<br/>invoices · POs · audit · ledger)]
+  Files[(FileStorage<br/>local disk / Cloud Storage)]
+
+  UI --> Static
+  UI -- fetch + EventSource --> Proxy --> REST
+  REST -- upload --> Files
+  REST -- enqueue --> Queue --> Worker --> Pipeline
+  E -. extract, explain .-> LLM
+  Pipeline -- one transaction --> DB
+```
+
+1. **Extract.** Text PDFs go through `pdf-parse`. Scans, which have no text layer, are sent to the model as the PDF itself. The model's JSON is untrusted: it is validated with Zod, and on failure the validation errors are sent back for up to 2 retries before the invoice is marked `FAILED` with the raw output kept for debugging.
+2. **Match.** Vendor by tax ID, then by fuzzy name. Purchase order by the number on the invoice, or by vendor and amount when the number is missing. A duplicate is the same vendor and invoice number.
+3. **Check and decide.** Plain rules: subtotal against the PO's remaining balance, line quantities, currency, duplicates, unknown vendor, and confidence below 0.85. Anything above INFO severity, or low confidence, goes to `NEEDS_REVIEW`, and the model writes a short explanation for the reviewer.
+4. **Post.** Auto-approved invoices, and invoices a reviewer approves, are posted through `ErpAdapter` (a mock ERP: Postgres ledger tables) and billed against the PO.
+
+All results of one run are written in a single transaction, every LLM call is logged (prompt version and hash, latency, tokens, outcome), and the UI updates live over server-sent events.
+
+## Design decisions and trade-offs
+
+- **The LLM reads; rules decide.** The model is good at turning messy documents into fields and at explaining a problem in plain English. Whether an invoice gets paid is a deterministic check against the PO that a finance team can read, test and trust. The model never approves anything.
+- **Never silently auto-approve.** Confidence is the lowest field-group confidence, lowered for scans and capped when the invoice's own arithmetic is wrong. Below the threshold, or on any PO mismatch, a human decides.
+- **Money is integers.** Minor units plus a currency code everywhere; amounts are compared pre-tax against PO balances.
+- **Boring infrastructure.** A Postgres job table with `SKIP LOCKED` instead of Redis, an in-process event bus for live updates, and one mock ERP adapter behind an interface a real ERP could implement.
+- **Swappable model.** All calls go through `LlmProvider`; prompts are versioned files in `apps/api/src/agent/prompts/`.
+
+More detail, including the data model and every rule, is in [`DESIGN.md`](DESIGN.md).
 
 ## Run locally
 
-Requires Node 22+, pnpm, and Docker.
+Requires Node 22+, pnpm and Docker. Put a Gemini key in `.env` as `LLM_API_KEY`.
 
 ```sh
-cp .env.example .env && docker compose up -d --wait postgres   # Postgres (set POSTGRES_PORT and DATABASE_URL if 5432 is taken)
-pnpm install && pnpm --filter api prisma migrate dev && pnpm --filter api prisma db seed   # vendors, POs and demo history
-pnpm dev                                               # API on :3000, web on :5173
+cp .env.example .env && docker compose up --build      # http://localhost:8080
+curl -X POST localhost:8080/api/demo/reset             # load the demo vendors, POs and history
 ```
 
-Without an LLM key you can still click through the whole app: `pnpm --filter api serve:fixtures` starts the API on :3100 with a stand-in model that knows the sample invoices, then run the web app against it with `API_PROXY_TARGET=http://localhost:3100 pnpm --filter web dev`.
+For development (hot reload, API on :3000, web on :5173):
+
+```sh
+docker compose up -d --wait postgres                   # set POSTGRES_PORT and DATABASE_URL if 5432 is taken
+pnpm install && pnpm --filter api prisma migrate dev && pnpm --filter api prisma db seed
+pnpm dev
+```
+
+No key? `pnpm --filter api serve:fixtures` starts the API on :3100 with a stand-in model that knows the 10 sample invoices; run the web app against it with `API_PROXY_TARGET=http://localhost:3100 pnpm --filter web dev`.
 
 ## Checks
 
@@ -23,17 +81,40 @@ pnpm lint && pnpm typecheck && pnpm test
 pnpm e2e    # Playwright: reset demo → upload → auto-approved → ledger (first run: npx playwright install chromium)
 ```
 
-## Fixtures and eval
+CI runs all of these on every push.
+
+## Deploy
+
+`deploy/cloud-run.sh` deploys both apps to Cloud Run, with invoice files in Cloud Storage, secrets in Secret Manager, and visitor uploads deleted after 24 hours. It is safe to re-run.
 
 ```sh
-pnpm --filter api fixtures:generate   # re-render fixtures/invoices/*.pdf from manifest.json (needs pdftoppm)
-pnpm --filter api eval                # real-model extraction accuracy on the fixtures (needs LLM_API_KEY)
+PROJECT_ID=my-project DATABASE_URL='postgresql://...' LLM_API_KEY=... deploy/cloud-run.sh
 ```
+
+Use a direct (non-pooled) connection string for a managed Postgres such as Neon or Cloud SQL. The API runs as one instance with CPU always allocated, because the worker processes jobs in the background and live updates are in-process. Set `MIN_INSTANCES=0` to let it scale to zero, at the cost of a slow first visit.
+
+## Evaluation and known limitations
+
+- **Extraction accuracy** on the 10 fixtures is measured by `pnpm --filter api eval` and recorded in [`docs/eval.md`](docs/eval.md). Target: 90% of fields correct. It has not been run against the real model yet.
+- **One instance.** Live updates use an in-process bus; scaling out means Postgres `LISTEN/NOTIFY`.
+- **Gemini only.** `anthropic` and `openai` are accepted in config but not implemented.
+- **Reviewers edit header fields and the vendor,** not individual line items. Edits do not re-run the checks; the edit and the decision are the audit record.
+- **Open demo.** No sign-in; anyone with the link can upload invoices or reset the demo data.
+
+## Next steps
+
+- Email ingestion: forward invoices to an address and the agent processes them.
+- Real ERP adapters (e.g. QuickBooks, SAP) behind `ErpAdapter`.
+- Vendor follow-up agent for overdue or disputed invoices.
+- Approval policies and spend limits by role.
+- Feedback loop: reviewer corrections feed back into prompt examples.
 
 ## Layout
 
-- `apps/api`: NestJS API, Prisma schema and seed
+- `apps/api`: NestJS API, agent pipeline, Prisma schema and seed
 - `apps/web`: React + Vite + Tailwind frontend
-- `fixtures/seed`: vendors and purchase orders loaded by the seed script
-- `fixtures/invoices`: 10 sample invoices covering each pipeline path, with ground truth in `manifest.json`
+- `fixtures/seed`: vendors and purchase orders
+- `fixtures/invoices`: 10 sample invoices covering each pipeline path, with ground truth in `manifest.json` (`pnpm --filter api fixtures:generate` re-renders them)
 - `fixtures/history`: the past invoices the demo opens with (the "Reset demo data" footer button restores them)
+- `deploy`: Cloud Run deploy script
+- `docs`: demo script, eval results, deferred work
