@@ -19,3 +19,26 @@ export const rejectInvoiceSchema = z.object({
 
 export type ApproveInvoiceInput = z.infer<typeof approveInvoiceSchema>;
 export type RejectInvoiceInput = z.infer<typeof rejectInvoiceSchema>;
+
+const decimalAmount = z
+  .string()
+  .regex(/^\d+(\.\d{1,2})?$/, 'Use a decimal amount such as "1234.50"');
+
+/** Fields a reviewer may correct before approving. Amounts are decimal strings; the API converts them. */
+export const updateInvoiceSchema = z
+  .object({
+    invoiceNumber: z.string().trim().min(1).max(100),
+    issueDate: z.iso.date(),
+    dueDate: z.iso.date().nullable(),
+    currency: z.string().regex(/^[A-Z]{3}$/, 'Use an ISO 4217 code such as "USD"'),
+    subtotal: decimalAmount,
+    tax: decimalAmount,
+    total: decimalAmount,
+    vendorId: z.uuid().nullable(),
+    purchaseOrderId: z.uuid().nullable(),
+  })
+  .partial()
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, 'Nothing to update');
+
+export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;

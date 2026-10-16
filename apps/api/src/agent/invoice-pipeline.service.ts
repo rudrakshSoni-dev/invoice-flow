@@ -1,11 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import type { InvoiceStatus, Prisma } from '@prisma/client';
 import { buffer } from 'node:stream/consumers';
 import type { Env } from '../common/env';
 import { ENV } from '../common/env.module';
 import { formatMinor } from '../common/money';
 import { PrismaService } from '../common/prisma.service';
 import { ERP_ADAPTER, type ErpAdapter } from '../erp/erp-adapter';
+import { InvoiceEvents, type PipelineStage } from '../events/invoice-events';
 import type { StructuredLlm } from '../llm/structured-output';
 import { LlmGateway } from '../llm/llm-gateway.service';
 import { FILE_STORAGE, type FileStorage } from '../storage/file-storage';
@@ -61,6 +62,7 @@ export class InvoicePipeline {
     private readonly llmGateway: LlmGateway,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
     @Inject(ERP_ADAPTER) private readonly erp: ErpAdapter,
+    private readonly events: InvoiceEvents,
   ) {}
 
   async process(invoiceId: string): Promise<void> {
@@ -70,17 +72,24 @@ export class InvoicePipeline {
       return;
     }
     const llm = this.llmGateway.forInvoice(invoiceId);
+    const stage = (name: PipelineStage) =>
+      this.events.emit({ type: 'invoice.stage', invoiceId, stage: name });
 
+    stage('EXTRACT');
     const pdf = await buffer(await this.storage.open(invoice.fileKey));
     const extraction = await extractInvoice(pdf, llm);
     const extractedAt = new Date();
     if (!extraction.ok) {
       await this.saveExtractionFailure(invoiceId, extraction, extractedAt);
+      this.emitStatus(invoiceId, 'FAILED');
       return;
     }
 
+    stage('MATCH');
     const match = await this.match(invoiceId, extraction);
+    stage('CHECK');
     const decision = await this.decide(extraction, match, llm);
+    if (decision.decision === 'AUTO_APPROVED') stage('POST');
 
     await this.prisma.$transaction(async (tx) => {
       await this.saveExtraction(tx, invoiceId, extraction, extractedAt);
@@ -90,6 +99,11 @@ export class InvoicePipeline {
         await this.post(tx, invoiceId, 'AGENT');
       }
     });
+    this.emitStatus(invoiceId, decision.decision);
+  }
+
+  emitStatus(invoiceId: string, status: InvoiceStatus): void {
+    this.events.emit({ type: 'invoice.status', invoiceId, status });
   }
 
   /** Posts an approved invoice to the ERP and records it. Shared by auto-approval and human approval. */
@@ -141,6 +155,7 @@ export class InvoicePipeline {
         },
       }),
     ]);
+    this.emitStatus(invoiceId, 'FAILED');
   }
 
   private async match(invoiceId: string, extraction: ExtractionSuccess): Promise<MatchOutcome> {

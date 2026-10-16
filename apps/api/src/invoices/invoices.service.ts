@@ -1,16 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import type { InvoiceStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { InvoicePipeline } from '../agent/invoice-pipeline.service';
 import { InvalidStateError, NotFoundError, ValidationError } from '../common/domain-errors';
 import { PROCESS_INVOICE_JOB } from '../common/job-types';
+import { toMinor } from '../common/money';
+import { InvoiceEvents } from '../events/invoice-events';
 import { PrismaService } from '../common/prisma.service';
 import { FILE_STORAGE, type FileStorage } from '../storage/file-storage';
 import type {
   ApproveInvoiceInput,
   ListInvoicesQuery,
   RejectInvoiceInput,
+  UpdateInvoiceInput,
 } from './invoice-query.schema';
 import { isPdf } from './pdf-signature';
 
@@ -22,17 +25,23 @@ export class InvoicesService {
     private readonly prisma: PrismaService,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
     private readonly pipeline: InvoicePipeline,
+    private readonly events: InvoiceEvents,
   ) {}
 
   async upload(file: UploadedInvoiceFile | undefined): Promise<{ id: string; status: string }> {
     if (!file) throw new ValidationError('Attach the invoice as a "file" form field');
-    if (!isPdf(file.buffer)) throw new ValidationError('Only PDF invoices are supported');
+    return this.createFromPdf(file.buffer, file.originalname);
+  }
+
+  async createFromPdf(pdf: Buffer, originalName: string): Promise<{ id: string; status: string }> {
+    if (!isPdf(pdf)) throw new ValidationError('Only PDF invoices are supported');
 
     const fileKey = `${randomUUID()}.pdf`;
-    await this.storage.save(fileKey, file.buffer);
+    await this.storage.save(fileKey, pdf);
 
+    let created: { id: string; status: InvoiceStatus };
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      created = await this.prisma.$transaction(async (tx) => {
         const invoice = await tx.invoice.create({
           data: { fileKey },
           select: { id: true, status: true },
@@ -42,8 +51,8 @@ export class InvoicesService {
             invoiceId: invoice.id,
             step: 'UPLOADED',
             actor: 'USER',
-            summary: `Uploaded ${file.originalname}`,
-            detail: { originalName: file.originalname, sizeBytes: file.buffer.length },
+            summary: `Uploaded ${originalName}`,
+            detail: { originalName, sizeBytes: pdf.length },
           },
         });
         await tx.job.create({ data: { type: PROCESS_INVOICE_JOB, invoiceId: invoice.id } });
@@ -53,6 +62,8 @@ export class InvoicesService {
       await this.storage.remove(fileKey);
       throw error;
     }
+    this.pipeline.emitStatus(created.id, created.status);
+    return created;
   }
 
   async list({ status, page, pageSize }: ListInvoicesQuery) {
@@ -114,6 +125,7 @@ export class InvoicesService {
       });
       await this.pipeline.post(tx, id, 'USER');
     });
+    this.pipeline.emitStatus(id, 'APPROVED');
     return this.detail(id);
   }
 
@@ -127,6 +139,72 @@ export class InvoicesService {
           actor: 'USER',
           summary: `Rejected by reviewer: ${reason}`,
           detail: { decision: 'REJECTED', reason },
+        },
+      });
+    });
+    this.pipeline.emitStatus(id, 'REJECTED');
+    return this.detail(id);
+  }
+
+  /** Reviewer corrections. Discrepancies stay as the agent found them; the edit is audited. */
+  async update(id: string, input: UpdateInvoiceInput) {
+    await this.prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.findUnique({ where: { id } });
+      if (!invoice) throw new NotFoundError(`Invoice ${id} not found`);
+      if (invoice.status !== 'NEEDS_REVIEW') {
+        throw new InvalidStateError(
+          `Only invoices that need review can be edited (this one is ${invoice.status})`,
+        );
+      }
+
+      const vendorId = input.vendorId !== undefined ? input.vendorId : invoice.vendorId;
+      if (input.vendorId) {
+        const vendor = await tx.vendor.findUnique({ where: { id: input.vendorId } });
+        if (!vendor) throw new ValidationError(`Vendor ${input.vendorId} does not exist`);
+      }
+      if (input.purchaseOrderId) {
+        const po = await tx.purchaseOrder.findUnique({ where: { id: input.purchaseOrderId } });
+        if (!po)
+          throw new ValidationError(`Purchase order ${input.purchaseOrderId} does not exist`);
+        if (po.vendorId !== vendorId)
+          throw new ValidationError(`${po.poNumber} was issued to a different vendor`);
+      }
+
+      const currency = input.currency ?? invoice.currency;
+      const amount = (value: string | undefined) => {
+        if (value === undefined) return undefined;
+        if (!currency) throw new ValidationError('Set a currency before editing amounts');
+        return toMinor(value, currency);
+      };
+      const data: Prisma.InvoiceUncheckedUpdateInput = {
+        invoiceNumber: input.invoiceNumber,
+        issueDate: input.issueDate ? new Date(input.issueDate) : undefined,
+        dueDate:
+          input.dueDate === undefined ? undefined : input.dueDate ? new Date(input.dueDate) : null,
+        currency: input.currency,
+        subtotalMinor: amount(input.subtotal),
+        taxMinor: amount(input.tax),
+        totalMinor: amount(input.total),
+        vendorId: input.vendorId,
+        purchaseOrderId: input.purchaseOrderId,
+      };
+
+      const before = invoice as unknown as Record<string, unknown>;
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      for (const [field, to] of Object.entries(data)) {
+        const from = before[field];
+        if (to !== undefined && String(from) !== String(to)) changes[field] = { from, to };
+      }
+      if (Object.keys(changes).length === 0) return;
+
+      await tx.invoice.update({ where: { id }, data });
+      await tx.auditEvent.create({
+        data: {
+          invoiceId: id,
+          step: 'REVIEWED',
+          actor: 'USER',
+          summary: `Edited ${Object.keys(changes).join(', ')}`,
+          detail: JSON.parse(JSON.stringify({ changes })) as Prisma.InputJsonObject,
         },
       });
     });

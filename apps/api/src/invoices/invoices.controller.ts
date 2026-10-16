@@ -5,6 +5,7 @@ import {
   Header,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
   StreamableFile,
@@ -17,6 +18,7 @@ import {
   approveInvoiceSchema,
   listInvoicesQuerySchema,
   rejectInvoiceSchema,
+  updateInvoiceSchema,
 } from './invoice-query.schema';
 import { InvoicesService, type UploadedInvoiceFile } from './invoices.service';
 
@@ -39,6 +41,11 @@ export class InvoicesController {
   @Get(':id')
   detail(@Param('id') id: string) {
     return this.invoices.detail(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: unknown) {
+    return this.invoices.update(id, parseOrThrow(updateInvoiceSchema, body ?? {}));
   }
 
   @Post(':id/approve')

@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -10,6 +11,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   UPLOAD_DIR: z.string().default('uploads'),
   WORKER_ENABLED: z.stringbool().default(true),
+  FIXTURES_DIR: z.string().default(join(__dirname, '../../../../fixtures')),
   CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.85),
 });
 
