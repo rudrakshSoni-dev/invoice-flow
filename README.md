@@ -2,7 +2,7 @@
 
 An AI agent that reads vendor invoices, extracts structured fields, matches them against purchase orders, flags mismatches, and posts approved results to an ERP-style ledger. Humans review anything the agent is not sure about, and every decision is auditable.
 
-> Status: milestone 3 (extraction). See [`DESIGN.md`](DESIGN.md) for the product and technical design.
+> Status: milestone 5 (decision and ledger posting); UI next. See [`DESIGN.md`](DESIGN.md) for the product and technical design.
 
 ## Run locally
 
