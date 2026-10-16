@@ -6,16 +6,16 @@ Last updated: 2026-10-16. Read this first in a new session, then `CLAUDE.md` and
 
 All 8 milestones in `CLAUDE.md` are built and committed on `main`. Nothing is deployed yet.
 
-| Milestone                 | State                                                                                                                                                                                                                                   |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Foundation             | Done                                                                                                                                                                                                                                    |
-| 2. Upload and storage     | Done                                                                                                                                                                                                                                    |
-| 3. Extraction             | Done; never run against the real model (no key yet)                                                                                                                                                                                     |
-| 4. Matching               | Done                                                                                                                                                                                                                                    |
-| 5. Decision and ERP write | Done                                                                                                                                                                                                                                    |
-| 6. UI                     | Done                                                                                                                                                                                                                                    |
-| 7. Polish                 | Done: demo history seed, Reset demo data, Retry for failed invoices, error states, lazy routes                                                                                                                                          |
-| 8. Ship                   | Code done: Dockerfiles, compose stack, Vercel + Render config (Cloud Run script as alternative), Postgres file storage, Cloud Storage, 24-hour upload expiry, deploy script, README, demo script. **Not deployed, video not recorded.** |
+| Milestone                 | State                                                                                                                                                                                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Foundation             | Done                                                                                                                                                                                                                                                               |
+| 2. Upload and storage     | Done                                                                                                                                                                                                                                                               |
+| 3. Extraction             | Done; never run against the real model (no key yet)                                                                                                                                                                                                                |
+| 4. Matching               | Done                                                                                                                                                                                                                                                               |
+| 5. Decision and ERP write | Done                                                                                                                                                                                                                                                               |
+| 6. UI                     | Done                                                                                                                                                                                                                                                               |
+| 7. Polish                 | Done: demo history seed, Reset demo data, Retry for failed invoices, error states, lazy routes                                                                                                                                                                     |
+| 8. Ship                   | Code done: Dockerfiles, compose stack, Vercel + Koyeb deploy steps (Render Blueprint and Cloud Run script as alternatives), Postgres file storage, Cloud Storage, 24-hour upload expiry, deploy script, README, demo script. **Not deployed, video not recorded.** |
 
 Checks passing at the last commit: `pnpm lint`, `pnpm typecheck`, 104 API tests, 13 web tests, and the Playwright e2e test.
 
@@ -24,11 +24,11 @@ Checks passing at the last commit: `pnpm lint`, `pnpm typecheck`, 104 API tests,
 These need the user (accounts, keys, a camera), in this order:
 
 1. **Gemini key.** Add `LLM_API_KEY` to `.env`, then run `pnpm --filter api eval`. It overwrites `docs/eval.md`; commit the result. Confirm the default model `gemini-2.5-flash` still works, or set `LLM_MODEL`. Check the result against the 90% target, and fix prompts in `apps/api/src/agent/prompts/` if it misses.
-2. **Postgres.** Create a Neon database and copy the **direct** (non-pooled) connection string. Give it only to Render. Keep `.env` pointing at the local container, because Jest and Playwright read `DATABASE_URL` from `.env` and reset whatever database it names.
-3. **Deploy.** Follow README "Deploy": the API on Render (`render.yaml` Blueprint), then the web app on Vercel (Root Directory `apps/web`, `VITE_API_URL` = the Render URL), then set Render's `APP_BASE_URL` to the Vercel URL. Neither config has been run against a real account yet, so expect small fixes on the first run. Then `curl -X POST <api>/demo/reset`, open the Vercel URL, and try samples 01 and 02.
+2. **Postgres.** Create a Neon database and copy the **direct** (non-pooled) connection string. Give it only to Koyeb. Keep `.env` pointing at the local container, because Jest and Playwright read `DATABASE_URL` from `.env` and reset whatever database it names.
+3. **Deploy.** Follow README "Deploy": the API on Koyeb's free instance (Dockerfile `apps/api/Dockerfile`, port 8080, `STORAGE_DRIVER=db`), then the web app on Vercel (Root Directory `apps/web`, `VITE_API_URL` = the Koyeb URL), then set Koyeb's `APP_BASE_URL` to the Vercel URL. Neither has been run against a real account yet, so expect small fixes on the first run. Then `curl -X POST <api>/demo/reset`, open the Vercel URL, and try samples 01 and 02.
 4. **Video.** Record from `docs/demo-script.md` against the deployed app.
 5. **README.** Replace the "not deployed yet" line at the top with the live URL and the video link.
-6. **GitHub.** Done: public at https://github.com/rudrakshSoni-dev/invoice-flow, and CI passes on `main`. Connect Render and Vercel to this repo.
+6. **GitHub.** Done: public at https://github.com/rudrakshSoni-dev/invoice-flow, and CI passes on `main`. Connect Koyeb and Vercel to this repo.
 
 Smaller deferred work is listed in `docs/next-steps.md`.
 

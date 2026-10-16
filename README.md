@@ -85,16 +85,30 @@ CI runs all of these on every push.
 
 ## Deploy
 
-The web app runs on Vercel, the API on Render (one Docker instance with the job worker), and Postgres on Neon. Invoice files are stored in Postgres, and visitor uploads are deleted after 24 hours.
+The web app runs on Vercel, the API on Koyeb's free instance (the API Docker image, with the job worker), and Postgres on Neon. Invoice files are stored in Postgres, and visitor uploads are deleted after 24 hours.
 
 1. **Neon:** create a database and copy its **direct** (non-pooled) connection string. The API runs migrations through it at startup, which a pooler breaks.
-2. **Render:** New → Blueprint, and pick this repo. `render.yaml` defines `invoiceflow-api`. Fill in `DATABASE_URL`, `LLM_API_KEY`, and `APP_BASE_URL` (the Vercel URL from step 3; a placeholder is fine for the first deploy). Then load the demo data:
-   ```sh
-   curl -X POST https://<api>.onrender.com/demo/reset
-   ```
-3. **Vercel:** import the repo, set Root Directory to `apps/web`, and set `VITE_API_URL=https://<api>.onrender.com`. `apps/web/vercel.json` covers the build and SPA routing. Then put the Vercel URL in Render's `APP_BASE_URL` (CORS) and redeploy the API.
+2. **Koyeb:** Create Web Service → GitHub → this repo, branch `main`, and choose these settings:
+   - **Builder:** Dockerfile, Dockerfile location `apps/api/Dockerfile`, work directory left at the repo root
+   - **Instance:** Free (Frankfurt or Washington, D.C.)
+   - **Port:** `8080` (HTTP), with the health check on path `/health`
+   - **Environment variables:** `PORT=8080`, `STORAGE_DRIVER=db`, `UPLOAD_RETENTION_HOURS=24`, `LLM_PROVIDER=gemini`, `LLM_MODEL=gemini-2.5-flash`, and the secrets `DATABASE_URL` and `LLM_API_KEY`. Also set `APP_BASE_URL` to the Vercel URL from step 3; a placeholder is fine for the first deploy.
 
-The browser calls the API directly rather than through a Vercel rewrite, so the SSE stream and 10 MB uploads aren't subject to proxy limits. On Render's free plan the API sleeps after 15 idle minutes and takes about a minute to wake; the paid Starter plan stays up.
+   Then load the demo data:
+
+   ```sh
+   curl -X POST https://<api>.koyeb.app/demo/reset
+   ```
+
+3. **Vercel:** import the repo, set Root Directory to `apps/web`, and set `VITE_API_URL=https://<api>.koyeb.app`. `apps/web/vercel.json` covers the build and SPA routing. Then put the Vercel URL in Koyeb's `APP_BASE_URL` (CORS) and redeploy the API.
+
+The browser calls the API directly rather than through a Vercel rewrite, so the SSE stream and 10 MB uploads aren't subject to proxy limits.
+
+The free instance is small (512 MB RAM, 0.1 vCPU), so startup and PDF parsing are slow but adequate for one demo user. It scales to zero after an hour without traffic and wakes on the next request; queued jobs resume when it does. Any paid instance size removes both limits.
+
+### Alternative: Render
+
+`render.yaml` is a Render Blueprint with the same settings (New → Blueprint). On the free plan the API sleeps after 15 idle minutes and takes about a minute to wake.
 
 ### Alternative: Cloud Run
 
@@ -129,6 +143,6 @@ Use a direct (non-pooled) connection string for a managed Postgres such as Neon 
 - `fixtures/seed`: vendors and purchase orders
 - `fixtures/invoices`: 10 sample invoices covering each pipeline path, with ground truth in `manifest.json` (`pnpm --filter api fixtures:generate` re-renders them)
 - `fixtures/history`: the past invoices the demo opens with (the "Reset demo data" footer button restores them)
-- `render.yaml`, `apps/web/vercel.json`: Render (API) and Vercel (web) deploy config
+- `apps/web/vercel.json`: Vercel deploy config (web); `render.yaml`: Render Blueprint (API, alternative to Koyeb)
 - `deploy`: Cloud Run deploy script (alternative)
 - `docs`: demo script, eval results, deferred work
