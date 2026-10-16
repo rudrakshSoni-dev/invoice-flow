@@ -8,10 +8,12 @@ import { join } from 'node:path';
 import { extractInvoice } from '../src/agent/extract.stage';
 import { loadEnv } from '../src/common/env';
 import { GEMINI_DEFAULT_MODEL, GeminiProvider } from '../src/llm/gemini.provider';
+import { LlmError, type LlmProvider } from '../src/llm/llm-provider';
 import { generateStructured } from '../src/llm/structured-output';
 import { FIXTURE_DIR, type FixtureInvoice, loadFixtureManifest } from './fixture-manifest';
 
 const TARGET_ACCURACY = 0.9;
+const TRANSIENT_RETRIES = 4;
 const SCALAR_FIELDS = [
   'vendorName',
   'vendorTaxId',
@@ -31,7 +33,25 @@ const normalize = (value: unknown) =>
   typeof value === 'string' ? value.trim().toLowerCase().replace(/\s+/g, ' ') : value;
 const sameAmount = (a: string, b: string) => Number(a) === Number(b);
 
-async function scoreFixture(fixture: FixtureInvoice, provider: GeminiProvider) {
+// The app's job worker retries transient provider errors; the eval does the same so one 503 doesn't end the run.
+function withTransientRetry(provider: LlmProvider): LlmProvider {
+  return {
+    name: provider.name,
+    async generateJson(request) {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await provider.generateJson(request);
+        } catch (error) {
+          if (!(error instanceof LlmError && error.retryable) || attempt >= TRANSIENT_RETRIES)
+            throw error;
+          await new Promise((resolve) => setTimeout(resolve, 2_000 * 2 ** attempt));
+        }
+      }
+    },
+  };
+}
+
+async function scoreFixture(fixture: FixtureInvoice, provider: LlmProvider) {
   const pdf = readFileSync(join(FIXTURE_DIR, fixture.file));
   const result = await extractInvoice(pdf, (req) =>
     generateStructured(provider, async () => {}, req),
@@ -89,7 +109,7 @@ async function main(): Promise<void> {
   const env = loadEnv();
   if (!env.LLM_API_KEY) throw new Error('Set LLM_API_KEY in .env to run the extraction eval');
   const model = env.LLM_MODEL || GEMINI_DEFAULT_MODEL;
-  const provider = new GeminiProvider(env.LLM_API_KEY, model);
+  const provider = withTransientRetry(new GeminiProvider(env.LLM_API_KEY, model));
 
   const results = [];
   for (const fixture of loadFixtureManifest()) {
