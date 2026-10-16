@@ -1,0 +1,6 @@
+# Builds one app image from the repo root. Used by deploy/cloud-run.sh:
+#   gcloud builds submit --config deploy/cloudbuild.yaml --substitutions _DOCKERFILE=...,_IMAGE=...
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-f', '${_DOCKERFILE}', '-t', '${_IMAGE}', '.']
+images: ['${_IMAGE}']
