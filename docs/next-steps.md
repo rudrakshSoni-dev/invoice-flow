@@ -10,3 +10,4 @@ Deferred work, tracked here instead of TODO comments.
 - **Retry for failed invoices (milestone 7):** DESIGN.md section 9 asks for a "Retry" button on the failure state; it needs a `POST /invoices/:id/retry` that clears the failed attempt and requeues the job.
 - **Reset demo data (milestone 7/8):** footer button from DESIGN.md section 13.
 - **Line item editing:** reviewers can edit header fields and the vendor, not individual lines.
+- **Bundle size (milestone 7):** the web bundle is ~504 kB minified (157 kB gzipped), just over Vite's 500 kB warning. Lazy-load the detail and ledger routes.
