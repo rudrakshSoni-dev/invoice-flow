@@ -1,3 +1,5 @@
+# `docker compose up -d --wait postgres` for development; `docker compose up --build` for the
+# whole app at http://localhost:${WEB_PORT:-8080}.
 services:
   postgres:
     image: postgres:16
@@ -15,5 +17,41 @@ services:
       timeout: 5s
       retries: 20
 
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      # Its own schema, so the containerised app never touches dev data in `public`.
+      DATABASE_URL: postgresql://invoiceflow:invoiceflow@postgres:5432/invoiceflow?schema=app
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      APP_BASE_URL: http://localhost:${WEB_PORT:-8080}
+      UPLOAD_RETENTION_HOURS: ${UPLOAD_RETENTION_HOURS:-0}
+    volumes:
+      - uploads:/repo/apps/api/uploads
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8080/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    environment:
+      API_URL: http://api:8080
+    ports:
+      - '${WEB_PORT:-8080}:8080'
+    depends_on:
+      api: { condition: service_healthy }
+
 volumes:
   pgdata:
+  uploads:

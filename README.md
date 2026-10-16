@@ -9,7 +9,7 @@ An AI agent that reads vendor invoices, extracts structured fields, matches them
 Requires Node 22+, pnpm, and Docker.
 
 ```sh
-cp .env.example .env && docker compose up -d --wait   # Postgres (set POSTGRES_PORT and DATABASE_URL if 5432 is taken)
+cp .env.example .env && docker compose up -d --wait postgres   # Postgres (set POSTGRES_PORT and DATABASE_URL if 5432 is taken)
 pnpm install && pnpm --filter api prisma migrate dev && pnpm --filter api prisma db seed   # vendors, POs and demo history
 pnpm dev                                               # API on :3000, web on :5173
 ```

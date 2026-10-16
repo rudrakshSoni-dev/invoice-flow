@@ -211,6 +211,9 @@ importers:
       pdf-parse:
         specifier: ^2.4.5
         version: 2.4.5
+      prisma:
+        specifier: ^6.19.3
+        version: 6.19.3(typescript@6.0.3)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -251,9 +254,6 @@ importers:
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
-      prisma:
-        specifier: ^6.19.3
-        version: 6.19.3(typescript@6.0.3)
       supertest:
         specifier: ^7.3.1
         version: 7.3.1(supports-color@8.1.1)
