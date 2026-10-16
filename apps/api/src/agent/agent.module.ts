@@ -4,6 +4,6 @@ import { JobWorker } from './job-worker.service';
 
 @Module({
   providers: [InvoicePipeline, JobWorker],
-  exports: [JobWorker],
+  exports: [InvoicePipeline, JobWorker],
 })
 export class AgentModule {}

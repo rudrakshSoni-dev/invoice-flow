@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { seedDatabase } from '../prisma/seed';
 import { AppModule } from '../src/app.module';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter';
 import { type Env, loadEnv } from '../src/common/env';
@@ -11,7 +12,9 @@ import { PrismaService } from '../src/common/prisma.service';
 import { LLM_PROVIDER } from '../src/llm/llm-provider';
 import { FILE_STORAGE } from '../src/storage/file-storage';
 import { LocalFileStorage } from '../src/storage/local-file-storage';
-import { ScriptedLlmProvider } from './fake-llm';
+import request from 'supertest';
+import { JobWorker } from '../src/agent/job-worker.service';
+import { ScriptedLlmProvider, perfectOutputFor, readFixturePdf } from './fake-llm';
 
 export type TestApp = {
   app: INestApplication;
@@ -19,6 +22,8 @@ export type TestApp = {
   llm: ScriptedLlmProvider;
   close: () => Promise<void>;
   reset: () => Promise<void>;
+  /** Uploads a fixture, scripts the model's answers, and runs the queued job to completion. */
+  processFixture: (file: string, ...llmOutputs: Array<string | Error>) => Promise<string>;
 };
 
 /** Full AppModule against the test schema, with temp file storage, a scripted LLM, and no background worker. */
@@ -39,12 +44,25 @@ export async function createTestApp(envOverrides: Partial<Env> = {}): Promise<Te
   await app.init();
   const prisma = app.get(PrismaService);
 
+  const processFixture = async (file: string, ...llmOutputs: Array<string | Error>) => {
+    llm.push(...(llmOutputs.length ? llmOutputs : [perfectOutputFor(file)]));
+    const res = await request(app.getHttpServer())
+      .post('/invoices')
+      .attach('file', readFixturePdf(file), file);
+    if (res.status !== 202)
+      throw new Error(`Upload failed: ${res.status} ${JSON.stringify(res.body)}`);
+    await app.get(JobWorker).runOnce();
+    return res.body.id as string;
+  };
+
   return {
     app,
     prisma,
     llm,
+    processFixture,
     reset: async () => {
-      await prisma.$executeRawUnsafe('TRUNCATE "Invoice" CASCADE');
+      llm.clear();
+      await seedDatabase(prisma);
     },
     close: async () => {
       await app.close();

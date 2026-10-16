@@ -20,6 +20,11 @@ export class ScriptedLlmProvider implements LlmProvider {
 
   constructor(private readonly outputs: Array<string | Error> = []) {}
 
+  clear(): void {
+    this.outputs.length = 0;
+    this.requests.length = 0;
+  }
+
   push(...outputs: Array<string | Error>): this {
     this.outputs.push(...outputs);
     return this;

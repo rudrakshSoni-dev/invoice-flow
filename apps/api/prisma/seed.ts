@@ -36,43 +36,53 @@ function readFixture<T>(file: string, schema: z.ZodType<T>): T {
   return schema.parse(JSON.parse(readFileSync(join(SEED_DIR, file), 'utf8')));
 }
 
-async function main(): Promise<void> {
-  const prisma = new PrismaClient();
+/** Wipes all domain tables and loads the vendors and purchase orders from fixtures/seed. */
+export async function seedDatabase(
+  prisma: PrismaClient,
+): Promise<{ vendors: number; purchaseOrders: number }> {
   const vendors = readFixture('vendors.json', vendorsSchema);
   const purchaseOrders = readFixture('purchase-orders.json', purchaseOrdersSchema);
 
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE "Job", "AgentRun", "LedgerEntry", "AuditEvent", "Discrepancy", "InvoiceLine", "Invoice", "PurchaseOrderLine", "PurchaseOrder", "Vendor" CASCADE',
+  );
+
+  const vendorIds = new Map<string, string>();
+  for (const { key, ...vendor } of vendors) {
+    const created = await prisma.vendor.create({ data: vendor });
+    vendorIds.set(key, created.id);
+  }
+
+  for (const po of purchaseOrders) {
+    const vendorId = vendorIds.get(po.vendor);
+    if (!vendorId) throw new Error(`${po.poNumber} references unknown vendor "${po.vendor}"`);
+    await prisma.purchaseOrder.create({
+      data: {
+        poNumber: po.poNumber,
+        vendorId,
+        currency: po.currency,
+        totalMinor: po.lines.reduce((sum, l) => sum + l.quantity * l.unitPriceMinor, 0),
+        lines: { create: po.lines },
+      },
+    });
+  }
+
+  return { vendors: vendors.length, purchaseOrders: purchaseOrders.length };
+}
+
+async function main(): Promise<void> {
+  const prisma = new PrismaClient();
   try {
-    await prisma.$executeRawUnsafe(
-      'TRUNCATE "Job", "AgentRun", "LedgerEntry", "AuditEvent", "Discrepancy", "InvoiceLine", "Invoice", "PurchaseOrderLine", "PurchaseOrder", "Vendor" CASCADE',
-    );
-
-    const vendorIds = new Map<string, string>();
-    for (const { key, ...vendor } of vendors) {
-      const created = await prisma.vendor.create({ data: vendor });
-      vendorIds.set(key, created.id);
-    }
-
-    for (const po of purchaseOrders) {
-      const vendorId = vendorIds.get(po.vendor);
-      if (!vendorId) throw new Error(`${po.poNumber} references unknown vendor "${po.vendor}"`);
-      await prisma.purchaseOrder.create({
-        data: {
-          poNumber: po.poNumber,
-          vendorId,
-          currency: po.currency,
-          totalMinor: po.lines.reduce((sum, l) => sum + l.quantity * l.unitPriceMinor, 0),
-          lines: { create: po.lines },
-        },
-      });
-    }
-
-    console.log(`Seeded ${vendors.length} vendors and ${purchaseOrders.length} purchase orders.`);
+    const counts = await seedDatabase(prisma);
+    console.log(`Seeded ${counts.vendors} vendors and ${counts.purchaseOrders} purchase orders.`);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

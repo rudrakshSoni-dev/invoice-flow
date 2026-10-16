@@ -83,24 +83,25 @@ Four deterministic stages. The LLM is used only in stage 1 and, optionally, to e
 - Transport errors (rate limits, outages) are not extraction failures: the job is retried with backoff, up to 3 attempts in total, then the invoice is marked `FAILED`. Non-retryable errors (missing key, bad request) fail immediately.
 
 ### Stage 2: Match
-- Vendor: exact tax ID match, else fuzzy name match (normalized, token-based). No match yields `UNKNOWN_VENDOR`.
-- PO: look for a PO number in the invoice text, else the best open PO for that vendor by amount proximity. None yields `NO_MATCHING_PO`.
-- Duplicate: same vendor plus invoice number already exists yields `DUPLICATE_INVOICE` (BLOCKING).
+- Vendor: exact tax ID match (ignoring case and separators), else fuzzy name match: lowercased word tokens with legal suffixes (Inc, LLC, GmbH, ...) removed, Dice similarity at least 0.75. No match yields `UNKNOWN_VENDOR` (BLOCKING: nothing can be posted without a vendor).
+- PO: the PO number extracted from the invoice, else the vendor's open PO whose remaining balance is closest to the invoice subtotal (recorded as an INFO `NO_MATCHING_PO` note so the reviewer can see how it was matched). A printed PO number that belongs to another vendor is BLOCKING; one that does not exist is a WARNING and falls back to the amount match. No PO at all yields `NO_MATCHING_PO` (WARNING).
+- Duplicate: same vendor plus invoice number already exists (ignoring `FAILED` and `REJECTED` invoices, so a corrected resubmission is allowed) yields `DUPLICATE_INVOICE` (BLOCKING).
 
 ### Stage 3: Check and decide
 Rules, not LLM judgment:
-- Currency differs from PO: BLOCKING.
-- Total exceeds PO remaining balance by more than 2%: BLOCKING. Within 2%: WARNING.
-- Line quantity exceeds PO line quantity: BLOCKING.
-- Overall confidence below 0.85: WARNING and forces review.
-- Decision: no BLOCKING or WARNING discrepancies and confidence at or above the threshold yields `AUTO_APPROVED`. Anything else yields `NEEDS_REVIEW`.
-- Optionally ask the LLM to write a two-sentence plain-English explanation of the discrepancies for the reviewer. Store it on the audit event.
+- Currency differs from PO: BLOCKING (amounts are then not compared).
+- Subtotal exceeds PO remaining balance (`totalMinor - billedMinor`) by more than 2%: BLOCKING. Within 2%: WARNING. The subtotal is used because PO amounts are pre-tax; comparing the tax-inclusive total would flag every taxed invoice. A fully billed PO is BLOCKING for any amount.
+- Line quantity exceeds PO line quantity: BLOCKING. Invoice lines are paired with PO lines by description similarity (at least 0.6).
+- Overall confidence below the threshold (`CONFIDENCE_THRESHOLD`, default 0.85): WARNING and forces review.
+- Decision: no BLOCKING or WARNING discrepancies and confidence at or above the threshold yields `AUTO_APPROVED`. INFO notes do not block. Anything else yields `NEEDS_REVIEW`.
+- For `NEEDS_REVIEW`, ask the LLM for a two-sentence plain-English explanation of the discrepancies and store it on the `DECIDED` audit event. If that call fails, the rule messages are used instead; the decision never depends on it.
 
 ### Stage 4: Post
-- `ErpAdapter.postInvoice(invoice)` writes a `LedgerEntry` and updates PO billed balance.
+- `ErpAdapter.postInvoice(invoice)` writes a `LedgerEntry` for the invoice total (account `6000`) and adds the subtotal to the PO's `billedMinor`, setting the PO to `PARTIALLY_BILLED` or `CLOSED`.
 - `MockErpAdapter` implements it against Postgres. The interface is the seam for a real ERP.
+- Human approval (`NEEDS_REVIEW` → `APPROVED`) posts the same way. It requires a matched vendor; an unknown-vendor invoice can only be rejected until vendor editing lands with the review UI.
 
-Every stage writes an `AuditEvent`.
+Every stage writes an `AuditEvent`. Stages only read and call the LLM; their results (extraction, match, decision, and posting for auto-approved invoices) are written in one database transaction, so a crash or retry never leaves a half-processed invoice. With a remote ERP, posting would move to an outbox row delivered after commit.
 
 ## 8. API
 
@@ -109,7 +110,7 @@ POST   /invoices                 multipart upload, returns invoice id, status PR
 GET    /invoices                 list with filters (status), pagination
 GET    /invoices/:id             detail incl. lines, discrepancies, audit events, matched PO
 PATCH  /invoices/:id             edit extracted fields during review
-POST   /invoices/:id/approve     human approve, triggers posting
+POST   /invoices/:id/approve     body: optional note; human approve, triggers posting
 POST   /invoices/:id/reject      body: reason
 GET    /invoices/:id/file        signed URL or stream of the original PDF
 GET    /ledger                   list ledger entries
