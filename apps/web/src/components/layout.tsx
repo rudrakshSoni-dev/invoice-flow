@@ -5,6 +5,7 @@ import { NavLink, Outlet } from 'react-router';
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { applyTheme, readTheme, type Theme } from '../lib/theme';
+import { ResetDemoButton } from './reset-demo-button';
 import { Button, focusRing } from './ui/button';
 
 function ApiStatus() {
@@ -88,8 +89,9 @@ export function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-3 text-xs text-text-muted">
-          <span>InvoiceFlow demo · AI agent for accounts payable</span>
+        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-xs text-text-muted">
+          <span className="mr-auto">InvoiceFlow demo · AI agent for accounts payable</span>
+          <ResetDemoButton />
           <ApiStatus />
         </div>
       </footer>

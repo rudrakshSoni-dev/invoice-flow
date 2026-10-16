@@ -1,17 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CircleX, ExternalLink } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, CircleX, ExternalLink, RotateCcw } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { AuditTrail } from '../components/audit-trail';
 import { Confidence } from '../components/confidence';
 import { DiscrepancyList } from '../components/discrepancy-list';
+import { ErrorState } from '../components/error-state';
 import { InvoiceFieldsForm, useInvoiceForm } from '../components/invoice-fields-form';
 import { PoComparison } from '../components/po-comparison';
 import { ReviewActions } from '../components/review-actions';
 import { StageStepper } from '../components/stage-stepper';
 import { StatusBadge } from '../components/status-badge';
-import { focusRing } from '../components/ui/button';
+import { Button, focusRing } from '../components/ui/button';
 import { Card, CardBody, CardHeader } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton';
+import { useToast } from '../components/ui/toast';
 import { ApiError, api, type InvoiceDetail } from '../lib/api';
 import { cn } from '../lib/cn';
 import { formatMoney } from '../lib/format';
@@ -42,10 +44,17 @@ export function InvoiceDetailPage() {
           <Skeleton className="h-96 w-full" />
         </div>
       ) : invoice.isError ? (
-        <Card className="p-6 text-sm">
-          {invoice.error instanceof ApiError && invoice.error.status === 404
-            ? 'This invoice does not exist.'
-            : `Could not load the invoice: ${invoice.error.message}`}
+        <Card>
+          {invoice.error instanceof ApiError && invoice.error.status === 404 ? (
+            <p className="p-6 text-sm">
+              This invoice does not exist. It may have been removed by a demo reset.
+            </p>
+          ) : (
+            <ErrorState
+              message={`Could not load the invoice: ${invoice.error.message}`}
+              onRetry={() => void invoice.refetch()}
+            />
+          )}
         </Card>
       ) : (
         <InvoiceDetailView invoice={invoice.data} />
@@ -69,17 +78,22 @@ function InvoiceDetailView({ invoice }: { invoice: InvoiceDetail }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="flex flex-wrap items-center gap-3 text-xl font-semibold">
-            <span className="amount">{invoice.invoiceNumber ?? 'New invoice'}</span>
+            <span className="amount">
+              {invoice.invoiceNumber ??
+                (invoice.status === 'FAILED' ? 'Unreadable document' : 'New invoice')}
+            </span>
             <StatusBadge status={invoice.status} />
           </h2>
           <p className="mt-1 text-sm text-text-muted">{vendorName}</p>
         </div>
-        <div className="text-right">
-          <p className="amount text-[28px] font-semibold leading-tight">
-            {formatMoney(invoice.totalMinor, invoice.currency)}
-          </p>
-          <Confidence value={invoice.confidence} className="mt-1" />
-        </div>
+        {invoice.totalMinor !== null && (
+          <div className="text-right">
+            <p className="amount text-[28px] font-semibold leading-tight">
+              {formatMoney(invoice.totalMinor, invoice.currency)}
+            </p>
+            <Confidence value={invoice.confidence} className="mt-1" />
+          </div>
+        )}
       </div>
 
       {invoice.status === 'PROCESSING' && (
@@ -158,20 +172,46 @@ function InvoiceDetailView({ invoice }: { invoice: InvoiceDetail }) {
 }
 
 function FailurePanel({ invoice }: { invoice: InvoiceDetail }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const retry = useMutation({
+    mutationFn: () => api.retry(invoice.id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['invoice', invoice.id], updated);
+      void queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      void queryClient.invalidateQueries({ queryKey: ['stats'] });
+    },
+    onError: (error: Error) =>
+      toast({ tone: 'error', title: 'Retry failed', description: error.message }),
+  });
   const raw = invoice.rawExtraction;
   const reason =
     raw?.reason ?? raw?.error ?? 'The agent could not extract valid data from this document.';
   return (
     <Card className="border-failed/40">
       <CardBody className="space-y-3">
-        <p className="flex items-start gap-2 text-sm">
-          <CircleX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-failed" />
-          {reason}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="flex items-start gap-2 text-sm">
+            <CircleX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-failed" />
+            <span>
+              <span className="font-medium">Processing failed.</span> {reason}
+            </span>
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => retry.mutate()}
+            disabled={retry.isPending}
+          >
+            <RotateCcw aria-hidden="true" className="size-3.5" />
+            {retry.isPending ? 'Retrying…' : 'Retry'}
+          </Button>
+        </div>
         {raw?.rawOutputs && raw.rawOutputs.length > 0 && (
           <details>
             <summary className={cn('cursor-pointer rounded text-xs text-text-muted', focusRing)}>
-              Raw model output ({raw.rawOutputs.length} attempts)
+              Raw model output ({raw.rawOutputs.length}{' '}
+              {raw.rawOutputs.length === 1 ? 'attempt' : 'attempts'})
             </summary>
             <pre className="amount mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-bg p-3 text-xs">
               {raw.rawOutputs.join('\n\n---\n\n')}

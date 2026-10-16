@@ -77,9 +77,32 @@ describe('Invoice detail', () => {
     ]);
   });
 
+  it('retries a failed invoice', async () => {
+    const failed = {
+      ...reviewInvoice,
+      status: 'FAILED' as const,
+      invoiceNumber: null,
+      rawExtraction: { error: 'Gemini returned 503' },
+    };
+    const api = mockApi({
+      ...routes,
+      'GET /invoices/inv-3': failed,
+      'POST /invoices/inv-3/retry': { ...failed, status: 'PROCESSING', rawExtraction: null },
+    });
+    renderAt('/invoices/inv-3');
+
+    expect(await screen.findByText(/Gemini returned 503/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByText('The agent is working on this invoice.')).toBeInTheDocument();
+    expect(api.calls.some((c) => c.method === 'POST' && c.path === '/invoices/inv-3/retry')).toBe(
+      true,
+    );
+  });
+
   it('shows a not-found message for an unknown invoice', async () => {
     mockApi({ 'GET /health': { status: 'ok', database: 'up' } });
     renderAt('/invoices/nope');
-    expect(await screen.findByText('This invoice does not exist.')).toBeInTheDocument();
+    expect(await screen.findByText(/This invoice does not exist/)).toBeInTheDocument();
   });
 });

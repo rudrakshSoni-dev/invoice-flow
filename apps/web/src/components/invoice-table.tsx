@@ -56,7 +56,7 @@ export function InvoiceTable({ invoices }: { invoices: InvoiceListItem[] }) {
                   <span className="ml-2 hidden text-xs text-review md:inline">unknown vendor</span>
                 )}
                 {invoice.invoiceNumber && (
-                  <span className="amount mt-0.5 block text-xs text-text-muted sm:hidden">
+                  <span className="amount mt-0.5 block whitespace-normal text-xs text-text-muted sm:hidden">
                     {invoice.invoiceNumber} · {formatMoney(invoice.totalMinor, invoice.currency)}
                   </span>
                 )}

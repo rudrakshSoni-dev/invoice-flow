@@ -7,4 +7,3 @@ Deferred work, tracked here instead of TODO comments.
 - **Other LLM providers:** only `gemini` is implemented; `LLM_PROVIDER=anthropic|openai` fails at boot with a clear message. Add them behind `LlmProvider` if needed.
 - **Extraction eval:** run `pnpm --filter api eval` with an API key and commit the generated `docs/eval.md`.
 - **Line item editing:** reviewers can edit header fields and the vendor, not individual lines.
-- **Bundle size (milestone 7):** the web bundle is ~504 kB minified (157 kB gzipped), just over Vite's 500 kB warning. Lazy-load the detail and ledger routes.

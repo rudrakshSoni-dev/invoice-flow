@@ -3,7 +3,7 @@ import { formatDuration, formatPercent } from '../lib/format';
 import { Card } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 
-export function StatCards({ stats }: { stats: Stats | undefined }) {
+export function StatCards({ stats, failed }: { stats: Stats | undefined; failed?: boolean }) {
   const cards = [
     { label: 'Total processed', value: stats ? String(stats.processed) : undefined },
     { label: 'Auto-approved', value: stats ? formatPercent(stats.autoApprovalRate) : undefined },
@@ -18,7 +18,9 @@ export function StatCards({ stats }: { stats: Stats | undefined }) {
       {cards.map((card) => (
         <Card key={card.label} className="p-4">
           <p className="text-xs text-text-muted">{card.label}</p>
-          {card.value === undefined ? (
+          {failed ? (
+            <p className="amount mt-1 text-[28px] font-semibold leading-tight text-text-muted">—</p>
+          ) : card.value === undefined ? (
             <Skeleton className="mt-2 h-7 w-16" />
           ) : (
             <p className="amount mt-1 text-[28px] font-semibold leading-tight">{card.value}</p>

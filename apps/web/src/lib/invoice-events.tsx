@@ -66,6 +66,12 @@ export function InvoiceEventsProvider({ children }: { children: ReactNode }) {
       void queryClient.invalidateQueries({ queryKey: ['ledger'] });
     });
 
+    // Another tab (or this one) reset the demo: everything cached is stale.
+    source.addEventListener('demo.reset', () => {
+      setStages({});
+      void queryClient.invalidateQueries();
+    });
+
     return () => {
       source.close();
       activeTimers.forEach(clearTimeout);

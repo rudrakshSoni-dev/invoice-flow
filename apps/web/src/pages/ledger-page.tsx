@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { Card } from '../components/ui/card';
+import { ErrorState } from '../components/error-state';
 import { Skeleton } from '../components/ui/skeleton';
 import { Table, Td, Th } from '../components/ui/table';
 import { focusRing } from '../components/ui/button';
@@ -25,9 +26,10 @@ export function LedgerPage() {
             ))}
           </div>
         ) : ledger.isError ? (
-          <p className="p-4 text-sm text-failed">
-            Could not load the ledger: {ledger.error.message}
-          </p>
+          <ErrorState
+            message={`Could not load the ledger: ${ledger.error.message}`}
+            onRetry={() => void ledger.refetch()}
+          />
         ) : ledger.data.items.length === 0 ? (
           <p className="p-8 text-center text-sm text-text-muted">
             Nothing posted yet. Approved invoices appear here.

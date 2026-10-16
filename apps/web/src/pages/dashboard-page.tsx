@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { InvoiceTable } from '../components/invoice-table';
 import { StatCards } from '../components/stat-cards';
 import { Card } from '../components/ui/card';
+import { ErrorState } from '../components/error-state';
 import { Skeleton } from '../components/ui/skeleton';
 import { focusRing } from '../components/ui/button';
 import { UploadActions } from '../components/upload-actions';
@@ -36,7 +37,7 @@ export function DashboardPage() {
         <UploadActions />
       </div>
 
-      <StatCards stats={stats.data} />
+      <StatCards stats={stats.data} failed={stats.isError} />
 
       {isEmpty ? (
         <Card className="flex flex-col items-center gap-4 px-4 py-16 text-center">
@@ -82,9 +83,10 @@ export function DashboardPage() {
               ))}
             </div>
           ) : invoices.isError ? (
-            <p className="p-4 text-sm text-failed">
-              Could not load invoices: {invoices.error.message}
-            </p>
+            <ErrorState
+              message={`Could not load invoices: ${invoices.error.message}`}
+              onRetry={() => void invoices.refetch()}
+            />
           ) : invoices.data.items.length === 0 ? (
             <p className="p-8 text-center text-sm text-text-muted">No invoices with this status.</p>
           ) : (

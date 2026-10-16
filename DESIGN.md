@@ -150,6 +150,7 @@ POST   /demo/reset               reseed the demo workspace (with history) and de
 
 ### Empty and loading states
 - Empty dashboard: illustration-free, one sentence, and the sample invoice button.
+- Load errors: inline message with a "Try again" button; the review screen and ledger are lazy-loaded routes.
 - Processing: animated stage stepper (Extract, Match, Check, Post) with the current stage pulsing.
 - Failure: clear message, show raw extraction for debugging, "Retry" button.
 

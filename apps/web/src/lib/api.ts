@@ -132,6 +132,7 @@ export type LedgerEntry = {
 };
 
 export type Health = { status: 'ok'; database: 'up' };
+export type DemoResetResult = { vendors: number; purchaseOrders: number; invoices: number };
 
 export const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -184,6 +185,8 @@ export const api = {
     request<InvoiceDetail>(`/invoices/${id}/approve`, json('POST', { note })),
   reject: (id: string, reason: string) =>
     request<InvoiceDetail>(`/invoices/${id}/reject`, json('POST', { reason })),
+  retry: (id: string) => request<InvoiceDetail>(`/invoices/${id}/retry`, { method: 'POST' }),
+  resetDemo: () => request<DemoResetResult>('/demo/reset', { method: 'POST' }),
   vendors: () => request<Vendor[]>('/vendors'),
   ledger: () => request<Page<LedgerEntry>>('/ledger'),
 };

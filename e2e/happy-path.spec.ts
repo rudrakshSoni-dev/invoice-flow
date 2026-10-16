@@ -3,7 +3,9 @@ import { join } from 'node:path';
 
 const CLEAN_INVOICE = join(__dirname, '../fixtures/invoices/01-clean-acme.pdf');
 
-test('upload an invoice, watch it auto-approve, and find it in the ledger', async ({ page }) => {
+test('reset the demo, upload an invoice, watch it auto-approve, and find it in the ledger', async ({
+  page,
+}) => {
   const problems: string[] = [];
   page.on('console', (msg) => {
     if (msg.type() === 'error' || msg.type() === 'warning') problems.push(msg.text());
@@ -11,7 +13,12 @@ test('upload an invoice, watch it auto-approve, and find it in the ledger', asyn
   page.on('pageerror', (error) => problems.push(error.message));
 
   await page.goto('/');
-  await expect(page.getByText(/No invoices yet/)).toBeVisible();
+  // Start from the seeded demo workspace, as a visitor would.
+  await page.getByRole('button', { name: 'Reset demo data' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Reset' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Demo data reset' })).toBeVisible();
+  await expect(page.getByRole('row', { name: /BL-0917/ })).toContainText('Auto-approved');
+  await expect(page.getByText('67%')).toBeVisible();
 
   await page.getByLabel('Upload invoice PDF').setInputFiles(CLEAN_INVOICE);
   // Radix also mirrors toast text into a screen-reader live region, so target the visible toast.
@@ -21,7 +28,7 @@ test('upload an invoice, watch it auto-approve, and find it in the ledger', asyn
   await expect(row.getByText('Auto-approved')).toBeVisible({ timeout: 30_000 });
   await expect(row).toContainText('Acme Office Supplies Inc.');
   await expect(row).toContainText('$1,494.72');
-  await expect(page.getByText('100%')).toBeVisible();
+  await expect(page.getByText('71%')).toBeVisible();
 
   await row.getByRole('link', { name: 'Acme Office Supplies Inc.' }).click();
   await expect(page.getByRole('heading', { name: /INV-A-2041/ })).toBeVisible();

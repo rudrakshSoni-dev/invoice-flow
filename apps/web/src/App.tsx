@@ -6,17 +6,26 @@ import { ToastProvider } from './components/ui/toast';
 import { TooltipProvider } from './components/ui/tooltip';
 import { InvoiceEventsProvider } from './lib/invoice-events';
 import { DashboardPage } from './pages/dashboard-page';
-import { InvoiceDetailPage } from './pages/invoice-detail-page';
-import { LedgerPage } from './pages/ledger-page';
 import { NotFoundPage } from './pages/not-found-page';
 
 export const routes: RouteObject[] = [
   {
     element: <Layout />,
+    // Shown for the moment a deep link waits on its lazy route chunk.
+    hydrateFallbackElement: <div className="min-h-screen bg-bg" aria-busy="true" />,
     children: [
       { index: true, element: <DashboardPage /> },
-      { path: 'invoices/:id', element: <InvoiceDetailPage /> },
-      { path: 'ledger', element: <LedgerPage /> },
+      // The review screen and ledger load on demand to keep the first page small.
+      {
+        path: 'invoices/:id',
+        lazy: async () => ({
+          Component: (await import('./pages/invoice-detail-page')).InvoiceDetailPage,
+        }),
+      },
+      {
+        path: 'ledger',
+        lazy: async () => ({ Component: (await import('./pages/ledger-page')).LedgerPage }),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

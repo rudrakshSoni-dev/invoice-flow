@@ -77,4 +77,21 @@ describe('Dashboard', () => {
     renderAt('/');
     expect(await screen.findByText('API unreachable')).toBeInTheDocument();
   });
+
+  it('resets the demo data after confirmation', async () => {
+    const api = mockApi({
+      ...base,
+      'GET /stats': stats,
+      'GET /invoices': { items: listItems, total: listItems.length, page: 1, pageSize: 100 },
+      'POST /demo/reset': { vendors: 6, purchaseOrders: 12, invoices: 6 },
+    });
+    renderAt('/');
+
+    await userEvent.click(await screen.findByRole('button', { name: /Reset demo data/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Reset demo data?' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Reset' }));
+
+    expect(await screen.findByText('Demo data reset')).toBeInTheDocument();
+    expect(api.calls.filter((c) => c.path === '/demo/reset')).toHaveLength(1);
+  });
 });
