@@ -9,7 +9,8 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "prisma": "dotenv -e ../../.env -- prisma",
     "fixtures:generate": "tsx scripts/generate-fixtures.ts",
-    "eval": "dotenv -e ../../.env -- tsx scripts/eval-extraction.ts"
+    "eval": "dotenv -e ../../.env -- tsx scripts/eval-extraction.ts",
+    "serve:fixtures": "nest build && dotenv -e ../../.env -- tsx test/e2e-server.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
