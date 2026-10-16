@@ -228,3 +228,10 @@ model Job {
 
   @@index([status, runAt])
 }
+
+/// Invoice file bytes for hosts without durable disk or a bucket (STORAGE_DRIVER=db).
+model StoredFile {
+  key       String   @id
+  data      Bytes
+  createdAt DateTime @default(now())
+}

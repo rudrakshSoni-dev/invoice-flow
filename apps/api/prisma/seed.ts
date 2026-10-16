@@ -10,7 +10,7 @@ async function main(): Promise<void> {
   try {
     const counts = await seedDatabase(prisma, {
       fixturesDir: env.FIXTURES_DIR,
-      history: { storage: createFileStorage(env) },
+      history: { storage: createFileStorage(env, prisma) },
     });
     console.log(
       `Seeded ${counts.vendors} vendors, ${counts.purchaseOrders} purchase orders and ${counts.invoices} past invoices.`,

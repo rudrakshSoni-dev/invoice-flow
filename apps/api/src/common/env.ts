@@ -11,7 +11,7 @@ const envSchema = z
     MAX_UPLOAD_MB: z.coerce.number().int().positive().default(10),
     PORT: z.coerce.number().int().positive().default(3000),
     UPLOAD_DIR: z.string().default('uploads'),
-    STORAGE_DRIVER: z.enum(['local', 'gcs']).default('local'),
+    STORAGE_DRIVER: z.enum(['local', 'gcs', 'db']).default('local'),
     GCS_BUCKET: z.string().default(''),
     WORKER_ENABLED: z.stringbool().default(true),
     FIXTURES_DIR: z.string().default(join(__dirname, '../../../../fixtures')),
