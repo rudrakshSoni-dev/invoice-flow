@@ -8,6 +8,7 @@ const envSchema = z.object({
   APP_BASE_URL: z.string().url().default('http://localhost:5173'),
   MAX_UPLOAD_MB: z.coerce.number().int().positive().default(10),
   PORT: z.coerce.number().int().positive().default(3000),
+  UPLOAD_DIR: z.string().default('uploads'),
 });
 
 export type Env = z.infer<typeof envSchema>;
