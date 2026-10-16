@@ -46,6 +46,12 @@ describe('PATCH /invoices/:id', () => {
     }>;
     const cedar = vendors.find((v) => v.name === 'Cedar IT Services')!;
 
+    const listed = await http().get('/invoices').expect(200);
+    expect(listed.body.items[0]).toMatchObject({
+      vendor: null,
+      extractedVendorName: 'Zenith Consulting Partners',
+    });
+
     await http().patch(`/invoices/${id}`).send({ vendorId: cedar.id }).expect(200);
     const approved = await http().post(`/invoices/${id}/approve`).send({}).expect(200);
     expect(approved.body.status).toBe('APPROVED');

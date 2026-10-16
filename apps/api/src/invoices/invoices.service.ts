@@ -68,7 +68,7 @@ export class InvoicesService {
 
   async list({ status, page, pageSize }: ListInvoicesQuery) {
     const where = status ? { status } : {};
-    const [items, total] = await this.prisma.$transaction([
+    const [rows, total] = await this.prisma.$transaction([
       this.prisma.invoice.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -82,11 +82,16 @@ export class InvoicesService {
           status: true,
           confidence: true,
           createdAt: true,
+          rawExtraction: true,
           vendor: { select: { id: true, name: true } },
         },
       }),
       this.prisma.invoice.count({ where }),
     ]);
+    const items = rows.map(({ rawExtraction, ...row }) => ({
+      ...row,
+      extractedVendorName: extractedVendorName(rawExtraction),
+    }));
     return { items, total, page, pageSize };
   }
 
@@ -237,4 +242,11 @@ export class InvoicesService {
     if (!invoice) throw new NotFoundError(`Invoice ${id} not found`);
     return this.storage.open(invoice.fileKey);
   }
+}
+
+function extractedVendorName(raw: Prisma.JsonValue): string | null {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && typeof raw.vendorName === 'string') {
+    return raw.vendorName;
+  }
+  return null;
 }
