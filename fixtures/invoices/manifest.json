@@ -1,0 +1,275 @@
+[
+  {
+    "file": "01-clean-acme.pdf",
+    "scenario": "Clean invoice, exact PO match (auto-approved)",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Acme Office Supplies Inc.",
+      "vendorTaxId": "US-84-1029384",
+      "invoiceNumber": "INV-A-2041",
+      "poNumber": "PO-1001",
+      "issueDate": "2026-09-02",
+      "dueDate": "2026-10-02",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "A4 copy paper, 5-ream case",
+          "quantity": 20,
+          "unitPrice": "42.50",
+          "total": "850.00"
+        },
+        {
+          "description": "Black toner cartridge",
+          "quantity": 6,
+          "unitPrice": "89.00",
+          "total": "534.00"
+        }
+      ],
+      "subtotal": "1384.00",
+      "tax": "110.72",
+      "total": "1494.72"
+    }
+  },
+  {
+    "file": "02-over-po-northwind.pdf",
+    "scenario": "Billed 5% over the PO (needs review, blocking)",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Northwind Logistics LLC",
+      "vendorTaxId": "US-27-5561902",
+      "invoiceNumber": "NWL-88213",
+      "poNumber": "PO-1002",
+      "issueDate": "2026-09-10",
+      "dueDate": "2026-10-10",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Freight, Chicago to Denver, full truckload",
+          "quantity": 4,
+          "unitPrice": "2992.50",
+          "total": "11970.00"
+        }
+      ],
+      "subtotal": "11970.00",
+      "tax": "0.00",
+      "total": "11970.00"
+    }
+  },
+  {
+    "file": "03-duplicate-brightline.pdf",
+    "scenario": "Duplicate invoice number (flagged when an invoice with the same vendor and number already exists)",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Brightline Facility Services",
+      "vendorTaxId": "US-91-3348271",
+      "invoiceNumber": "BL-0917",
+      "poNumber": "PO-1003",
+      "issueDate": "2026-10-01",
+      "dueDate": "2026-10-31",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Monthly office cleaning, October",
+          "quantity": 1,
+          "unitPrice": "3200.00",
+          "total": "3200.00"
+        }
+      ],
+      "subtotal": "3200.00",
+      "tax": "0.00",
+      "total": "3200.00"
+    }
+  },
+  {
+    "file": "04-unknown-vendor-zenith.pdf",
+    "scenario": "Unknown vendor, no PO",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Zenith Consulting Partners",
+      "vendorTaxId": "US-55-4410298",
+      "invoiceNumber": "ZCP-2026-114",
+      "poNumber": null,
+      "issueDate": "2026-09-22",
+      "dueDate": "2026-10-22",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Process improvement workshop",
+          "quantity": 2,
+          "unitPrice": "2400.00",
+          "total": "4800.00"
+        },
+        {
+          "description": "Follow-up report",
+          "quantity": 1,
+          "unitPrice": "950.00",
+          "total": "950.00"
+        }
+      ],
+      "subtotal": "5750.00",
+      "tax": "0.00",
+      "total": "5750.00"
+    }
+  },
+  {
+    "file": "05-currency-lumen.pdf",
+    "scenario": "Invoice in USD against a EUR purchase order",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Lumen Software GmbH",
+      "vendorTaxId": "DE-298374615",
+      "invoiceNumber": "LS-26-0391",
+      "poNumber": "PO-1004",
+      "issueDate": "2026-09-15",
+      "dueDate": "2026-10-15",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Analytics platform, annual license, 25 seats",
+          "quantity": 25,
+          "unitPrice": "480.00",
+          "total": "12000.00"
+        }
+      ],
+      "subtotal": "12000.00",
+      "tax": "0.00",
+      "total": "12000.00"
+    }
+  },
+  {
+    "file": "06-scanned-harbor.pdf",
+    "scenario": "Scanned image-only PDF (vision fallback, lower confidence)",
+    "render": { "scanned": true },
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Harbor Print Co.",
+      "vendorTaxId": "US-46-7720135",
+      "invoiceNumber": "HP-5532",
+      "poNumber": "PO-1005",
+      "issueDate": "2026-09-18",
+      "dueDate": "2026-10-18",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Trade show banners, 3x8 ft",
+          "quantity": 4,
+          "unitPrice": "185.00",
+          "total": "740.00"
+        },
+        {
+          "description": "Brochures, tri-fold, 1000 count",
+          "quantity": 2,
+          "unitPrice": "340.00",
+          "total": "680.00"
+        }
+      ],
+      "subtotal": "1420.00",
+      "tax": "99.40",
+      "total": "1519.40"
+    }
+  },
+  {
+    "file": "07-quantity-acme.pdf",
+    "scenario": "Line quantity (12) above PO line quantity (10)",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Acme Office Supplies Inc.",
+      "vendorTaxId": "US-84-1029384",
+      "invoiceNumber": "INV-A-2057",
+      "poNumber": "PO-1006",
+      "issueDate": "2026-09-25",
+      "dueDate": "2026-10-25",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Ergonomic task chair",
+          "quantity": 12,
+          "unitPrice": "279.00",
+          "total": "3348.00"
+        }
+      ],
+      "subtotal": "3348.00",
+      "tax": "267.84",
+      "total": "3615.84"
+    }
+  },
+  {
+    "file": "08-math-error-northwind.pdf",
+    "scenario": "Printed subtotal does not equal the sum of the lines",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Northwind Logistics LLC",
+      "vendorTaxId": "US-27-5561902",
+      "invoiceNumber": "NWL-88240",
+      "poNumber": "PO-1007",
+      "issueDate": "2026-09-30",
+      "dueDate": "2026-10-30",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Pallet storage, per pallet per month",
+          "quantity": 40,
+          "unitPrice": "18.00",
+          "total": "720.00"
+        },
+        {
+          "description": "Outbound handling fee",
+          "quantity": 1,
+          "unitPrice": "450.00",
+          "total": "450.00"
+        }
+      ],
+      "subtotal": "1240.00",
+      "tax": "0.00",
+      "total": "1240.00"
+    }
+  },
+  {
+    "file": "09-no-po-cedar.pdf",
+    "scenario": "No PO reference, matchable by vendor and amount",
+    "expected": {
+      "isInvoice": true,
+      "vendorName": "Cedar IT Services",
+      "vendorTaxId": "US-63-9081726",
+      "invoiceNumber": "CIT-4471",
+      "poNumber": null,
+      "issueDate": "2026-10-05",
+      "dueDate": "2026-11-04",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "description": "Laptop provisioning and imaging",
+          "quantity": 15,
+          "unitPrice": "120.00",
+          "total": "1800.00"
+        },
+        {
+          "description": "On-site support, hourly",
+          "quantity": 18,
+          "unitPrice": "95.00",
+          "total": "1710.00"
+        }
+      ],
+      "subtotal": "3510.00",
+      "tax": "0.00",
+      "total": "3510.00"
+    }
+  },
+  {
+    "file": "10-garbage.pdf",
+    "scenario": "Not an invoice (fails cleanly)",
+    "render": {
+      "garbage": [
+        "Quarterly offsite: logistics notes",
+        "",
+        "Bus leaves at 8:15 from the north entrance. Bring a jacket.",
+        "Lunch: vegetarian option confirmed with the venue.",
+        "Breakout rooms: Cedar, Maple, Birch. Projector only in Maple.",
+        "Remember to collect feedback forms before 4pm.",
+        "",
+        "Shopping list for the team dinner: lemons, basil, sparkling water."
+      ]
+    },
+    "expected": { "isInvoice": false }
+  }
+]
