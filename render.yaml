@@ -21,9 +21,9 @@ services:
       - key: APP_BASE_URL
         sync: false
       - key: LLM_PROVIDER
-        value: gemini
+        value: groq
       - key: LLM_MODEL
-        value: gemini-3.8-flash
+        value: openai/gpt-oss-120b
       # No durable disk on Render: invoice files live in Postgres.
       - key: STORAGE_DRIVER
         value: db

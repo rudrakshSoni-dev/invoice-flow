@@ -4,7 +4,7 @@ import { z } from 'zod';
 const envSchema = z
   .object({
     DATABASE_URL: z.string().url(),
-    LLM_PROVIDER: z.enum(['gemini', 'anthropic', 'openai']).default('gemini'),
+    LLM_PROVIDER: z.enum(['gemini', 'anthropic', 'openai', 'groq']).default('gemini'),
     LLM_API_KEY: z.string().default(''),
     LLM_MODEL: z.string().default(''),
     APP_BASE_URL: z.string().url().default('http://localhost:5173'),

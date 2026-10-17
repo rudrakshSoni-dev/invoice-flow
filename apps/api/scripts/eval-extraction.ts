@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { extractInvoice } from '../src/agent/extract.stage';
 import { loadEnv } from '../src/common/env';
 import { GEMINI_DEFAULT_MODEL, GeminiProvider } from '../src/llm/gemini.provider';
+import { GROQ_DEFAULT_MODEL, GroqProvider } from '../src/llm/groq.provider';
 import { LlmError, type LlmProvider } from '../src/llm/llm-provider';
 import { generateStructured } from '../src/llm/structured-output';
 import { FIXTURE_DIR, type FixtureInvoice, loadFixtureManifest } from './fixture-manifest';
@@ -108,8 +109,12 @@ async function scoreFixture(fixture: FixtureInvoice, provider: LlmProvider) {
 async function main(): Promise<void> {
   const env = loadEnv();
   if (!env.LLM_API_KEY) throw new Error('Set LLM_API_KEY in .env to run the extraction eval');
-  const model = env.LLM_MODEL || GEMINI_DEFAULT_MODEL;
-  const provider = withTransientRetry(new GeminiProvider(env.LLM_API_KEY, model));
+  const isGroq = env.LLM_PROVIDER === 'groq';
+  const defaultModel = isGroq ? GROQ_DEFAULT_MODEL : GEMINI_DEFAULT_MODEL;
+  const model = env.LLM_MODEL || defaultModel;
+  const provider = withTransientRetry(
+    isGroq ? new GroqProvider(env.LLM_API_KEY, model) : new GeminiProvider(env.LLM_API_KEY, model),
+  );
 
   const results = [];
   for (const fixture of loadFixtureManifest()) {

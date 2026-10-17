@@ -2,16 +2,19 @@ import { Global, Module } from '@nestjs/common';
 import type { Env } from '../common/env';
 import { ENV } from '../common/env.module';
 import { GEMINI_DEFAULT_MODEL, GeminiProvider } from './gemini.provider';
+import { GROQ_DEFAULT_MODEL, GroqProvider } from './groq.provider';
 import { LLM_PROVIDER, type LlmProvider } from './llm-provider';
 import { LlmGateway } from './llm-gateway.service';
 
 function createProvider(env: Env): LlmProvider {
   switch (env.LLM_PROVIDER) {
+    case 'groq':
+      return new GroqProvider(env.LLM_API_KEY, env.LLM_MODEL || GROQ_DEFAULT_MODEL);
     case 'gemini':
       return new GeminiProvider(env.LLM_API_KEY, env.LLM_MODEL || GEMINI_DEFAULT_MODEL);
     default:
       throw new Error(
-        `LLM_PROVIDER=${env.LLM_PROVIDER} is not implemented yet. Supported: gemini.`,
+        `LLM_PROVIDER=${env.LLM_PROVIDER} is not implemented yet. Supported: groq, gemini.`,
       );
   }
 }
