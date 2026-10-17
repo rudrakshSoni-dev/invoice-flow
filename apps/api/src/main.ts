@@ -9,7 +9,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const env = app.get<Env>(ENV);
   app.useGlobalFilters(new DomainExceptionFilter());
-  app.enableCors({ origin: env.APP_BASE_URL });
+  app.enableCors({ origin: new URL(env.APP_BASE_URL).origin });
   app.enableShutdownHooks();
   await app.listen(env.PORT);
 }

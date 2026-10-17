@@ -49,7 +49,7 @@ export function Providers({ client, children }: { client: QueryClient; children:
   );
 }
 
-const router = createBrowserRouter(routes);
+const router = createBrowserRouter(routes, { basename: import.meta.env.BASE_URL });
 const queryClient = createQueryClient();
 
 export function App() {
