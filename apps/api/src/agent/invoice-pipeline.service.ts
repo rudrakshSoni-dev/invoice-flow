@@ -91,14 +91,17 @@ export class InvoicePipeline {
     const decision = await this.decide(extraction, match, llm);
     if (decision.decision === 'AUTO_APPROVED') stage('POST');
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.saveExtraction(tx, invoiceId, extraction, extractedAt);
-      await this.saveMatch(tx, invoiceId, match);
-      await this.saveDecision(tx, invoiceId, decision);
-      if (decision.decision === 'AUTO_APPROVED') {
-        await this.post(tx, invoiceId, 'AGENT');
-      }
-    });
+    await this.prisma.$transaction(
+      async (tx) => {
+        await this.saveExtraction(tx, invoiceId, extraction, extractedAt);
+        await this.saveMatch(tx, invoiceId, match);
+        await this.saveDecision(tx, invoiceId, decision);
+        if (decision.decision === 'AUTO_APPROVED') {
+          await this.post(tx, invoiceId, 'AGENT');
+        }
+      },
+      { maxWait: 10_000, timeout: 30_000 },
+    );
     this.emitStatus(invoiceId, decision.decision);
   }
 

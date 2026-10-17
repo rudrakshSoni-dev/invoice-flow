@@ -111,25 +111,28 @@ export class InvoicesService {
   }
 
   async approve(id: string, { note }: ApproveInvoiceInput) {
-    await this.prisma.$transaction(async (tx) => {
-      await this.claimForReview(tx, id, 'APPROVED');
-      const invoice = await tx.invoice.findUniqueOrThrow({
-        where: { id },
-        select: { vendorId: true },
-      });
-      if (!invoice.vendorId)
-        throw new InvalidStateError('Assign a known vendor before approving this invoice');
-      await tx.auditEvent.create({
-        data: {
-          invoiceId: id,
-          step: 'REVIEWED',
-          actor: 'USER',
-          summary: note ? `Approved by reviewer: ${note}` : 'Approved by reviewer',
-          detail: { decision: 'APPROVED', note: note ?? null },
-        },
-      });
-      await this.pipeline.post(tx, id, 'USER');
-    });
+    await this.prisma.$transaction(
+      async (tx) => {
+        await this.claimForReview(tx, id, 'APPROVED');
+        const invoice = await tx.invoice.findUniqueOrThrow({
+          where: { id },
+          select: { vendorId: true },
+        });
+        if (!invoice.vendorId)
+          throw new InvalidStateError('Assign a known vendor before approving this invoice');
+        await tx.auditEvent.create({
+          data: {
+            invoiceId: id,
+            step: 'REVIEWED',
+            actor: 'USER',
+            summary: note ? `Approved by reviewer: ${note}` : 'Approved by reviewer',
+            detail: { decision: 'APPROVED', note: note ?? null },
+          },
+        });
+        await this.pipeline.post(tx, id, 'USER');
+      },
+      { maxWait: 10_000, timeout: 30_000 },
+    );
     this.pipeline.emitStatus(id, 'APPROVED');
     return this.detail(id);
   }

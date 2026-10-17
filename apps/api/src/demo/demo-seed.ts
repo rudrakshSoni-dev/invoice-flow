@@ -137,7 +137,10 @@ export async function seedDatabase(
       const pdf = await readFile(join(options.fixturesDir, 'history', entry.file));
       const fileKey = `${HISTORY_FILE_PREFIX}${entry.file}`;
       await storage.save(fileKey, pdf);
-      await prisma.$transaction((tx) => createHistoryInvoice(tx, entry, fileKey, now));
+      await prisma.$transaction((tx) => createHistoryInvoice(tx, entry, fileKey, now), {
+        maxWait: 10_000,
+        timeout: 30_000,
+      });
     }
   }
 
