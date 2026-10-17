@@ -6,29 +6,27 @@ Last updated: 2026-10-17. Read this first in a new session, then `CLAUDE.md` and
 
 All 8 milestones in `CLAUDE.md` are built and committed on `main`. Nothing is deployed yet.
 
-| Milestone                 | State                                                                                                                                                                                                                                                              |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1. Foundation             | Done                                                                                                                                                                                                                                                               |
-| 2. Upload and storage     | Done                                                                                                                                                                                                                                                               |
-| 3. Extraction             | Done; 100% field accuracy (109/109 fields) with gemini-3.8-flash (see `docs/eval.md`)                                                                                                                                                                              |
-| 4. Matching               | Done                                                                                                                                                                                                                                                               |
-| 5. Decision and ERP write | Done                                                                                                                                                                                                                                                               |
-| 6. UI                     | Done                                                                                                                                                                                                                                                               |
-| 7. Polish                 | Done: demo history seed, Reset demo data, Retry for failed invoices, error states, lazy routes                                                                                                                                                                     |
-| 8. Ship                   | Code done: Dockerfiles, compose stack, Vercel + Koyeb deploy steps (Render Blueprint and Cloud Run script as alternatives), Postgres file storage, Cloud Storage, 24-hour upload expiry, deploy script, README, demo script. **Not deployed, video not recorded.** |
+| Milestone                 | State                                                                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Foundation             | Done                                                                                                                                                                               |
+| 2. Upload and storage     | Done                                                                                                                                                                               |
+| 3. Extraction             | Done; 100% field accuracy (109/109 fields) with gemini-3.8-flash (see `docs/eval.md`)                                                                                              |
+| 4. Matching               | Done                                                                                                                                                                               |
+| 5. Decision and ERP write | Done                                                                                                                                                                               |
+| 6. UI                     | Done                                                                                                                                                                               |
+| 7. Polish                 | Done: demo history seed, Reset demo data, Retry for failed invoices, error states, lazy routes                                                                                     |
+| 8. Ship                   | Done: Deployed live to Render (API: `https://invoiceflow-api-kw3g.onrender.com`) and GitHub Pages (Web: `https://rudrakshsoni-dev.github.io/invoice-flow/`). Video to be recorded. |
 
 Checks passing: `pnpm lint`, `pnpm typecheck`, 106 API tests, 15 web tests, Playwright e2e test, and extraction eval (100% on 10 fixtures).
 
 ## Where to continue
 
-These need the user (accounts, keys, a camera), in this order:
-
-1. **Gemini key.** Done: `gemini-3.8-flash` scored 109/109 (100%) on all 10 fixtures (see `docs/eval.md`). Enable billing or keep key handy before public demo traffic so the free tier doesn't dry up.
-2. **Postgres.** Create a Neon database and copy the **direct** (non-pooled) connection string. Give it only to Koyeb. Keep `.env` pointing at the local container (`localhost:5434`), because Jest and Playwright read `DATABASE_URL` from `.env` and reset whatever database it names.
-3. **Deploy.** Follow README "Deploy": the API on Koyeb's free instance (Dockerfile `apps/api/Dockerfile`, port 8080, `STORAGE_DRIVER=db`), then the web app on Vercel (Root Directory `apps/web`, `VITE_API_URL` = the Koyeb URL), then set Koyeb's `APP_BASE_URL` to the Vercel URL. Neither has been run against a real account yet, so expect small fixes on the first run. Then `curl -X POST <api>/demo/reset`, open the Vercel URL, and try samples 01 and 02.
-4. **Video.** Record from `docs/demo-script.md` against the deployed app.
-5. **README.** Replace the "not deployed yet" line at the top with the live URL and the video link.
-6. **GitHub.** Done: public at https://github.com/rudrakshSoni-dev/invoice-flow, and CI passes on `main`. Connect Koyeb and Vercel to this repo.
+1. **Live deployment:** Done!
+   - Frontend: [https://rudrakshsoni-dev.github.io/invoice-flow/](https://rudrakshsoni-dev.github.io/invoice-flow/)
+   - Backend API: [https://invoiceflow-api-kw3g.onrender.com](https://invoiceflow-api-kw3g.onrender.com)
+   - Neon Database: Migrated and seeded with past demo invoices and POs.
+2. **Video.** Record from `docs/demo-script.md` against the deployed app.
+3. **README.** Replace the demo video placeholder once recorded.
 
 Smaller deferred work is listed in `docs/next-steps.md`.
 

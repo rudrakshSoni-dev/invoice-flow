@@ -1,6 +1,6 @@
 # InvoiceFlow
 
-**Live demo:** not deployed yet (see [Deploy](#deploy)) · **Demo video (90 s):** to be recorded from [`docs/demo-script.md`](docs/demo-script.md)
+**Live demo:** [https://rudrakshsoni-dev.github.io/invoice-flow/](https://rudrakshsoni-dev.github.io/invoice-flow/) · **API:** [https://invoiceflow-api-kw3g.onrender.com](https://invoiceflow-api-kw3g.onrender.com) · **Demo video (90 s):** to be recorded from [`docs/demo-script.md`](docs/demo-script.md)
 
 > **The first load can take up to a minute.** The live demo runs on free hosting, and its server sleeps after an hour without visitors. The page says when it is waking up, and everything is fast after that. To see the whole flow without waiting, watch the video.
 
