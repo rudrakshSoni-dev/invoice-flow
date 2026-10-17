@@ -48,11 +48,13 @@ jobs:
       - name: Build web application
         env:
           VITE_BASE_PATH: '/invoice-flow/'
-          VITE_API_URL: ${{ inputs.api_url || vars.VITE_API_URL || 'https://invoiceflow-api.onrender.com' }}
+          VITE_API_URL: ${{ inputs.api_url || vars.VITE_API_URL || 'https://invoiceflow-api-kw3g.onrender.com' }}
         run: pnpm --filter web build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
